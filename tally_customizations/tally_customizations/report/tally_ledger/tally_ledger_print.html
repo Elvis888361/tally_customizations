@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>{{ title }}</title>
+	<style>
+		@media print {
+			body {
+				margin: 0;
+				padding: 20px;
+			}
+		}
+
+		body {
+			font-family: Arial, sans-serif;
+			font-size: 11pt;
+			color: #000;
+		}
+
+		.print-heading {
+			text-align: center;
+			margin-bottom: 20px;
+		}
+
+		.store-name {
+			font-size: 14pt;
+			font-weight: bold;
+			margin-bottom: 5px;
+		}
+
+		.store-details {
+			font-size: 10pt;
+			color: #666;
+		}
+
+		.ledger-info {
+			text-align: center;
+			margin: 20px 0;
+		}
+
+		.ledger-name {
+			font-size: 13pt;
+			font-weight: bold;
+			margin: 5px 0;
+		}
+
+		.date-range {
+			font-size: 10pt;
+			color: #666;
+			margin-top: 10px;
+		}
+
+		.ledger-table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-top: 20px;
+		}
+
+		.ledger-table th {
+			border-top: 1px solid #000;
+			border-bottom: 1px solid #000;
+			padding: 8px 5px;
+			text-align: left;
+			font-weight: bold;
+			font-size: 10pt;
+		}
+
+		.ledger-table td {
+			padding: 5px;
+			font-size: 10pt;
+			vertical-align: top;
+		}
+
+		.ledger-table th.right,
+		.ledger-table td.right {
+			text-align: right;
+		}
+
+		.ledger-table tbody tr {
+			border-bottom: none;
+		}
+
+		.opening-row,
+		.closing-row {
+			font-weight: bold;
+		}
+
+		.total-row {
+			border-top: 2px solid #000;
+			border-bottom: 2px double #000;
+			font-weight: bold;
+		}
+
+		.total-row td {
+			padding-top: 8px;
+			padding-bottom: 8px;
+		}
+
+		.page-info {
+			text-align: right;
+			font-size: 9pt;
+			color: #666;
+			margin-top: -15px;
+			margin-bottom: 10px;
+		}
+
+		/* Column widths */
+		.col-date { width: 12%; }
+		.col-particulars { width: 30%; }
+		.col-vch-type { width: 15%; }
+		.col-vch-no { width: 15%; }
+		.col-debit { width: 14%; }
+		.col-credit { width: 14%; }
+	</style>
+</head>
+<body>
+	<div class="print-heading">
+		<div class="store-name">{{ company }}</div>
+		<div class="store-details">{{ company_address }}</div>
+	</div>
+
+	<div class="page-info">Page 1</div>
+
+	<div class="ledger-info">
+		<div class="ledger-name">{{ account_name }}</div>
+		<div>{{ ledger_type }}</div>
+		<div class="date-range">{{ from_date }} to {{ to_date }}</div>
+	</div>
+
+	<table class="ledger-table">
+		<thead>
+			<tr>
+				<th class="col-date">Date</th>
+				<th class="col-particulars">Particulars</th>
+				<th class="col-vch-type">Vch Type</th>
+				<th class="col-vch-no">Vch No /Excise Inv No</th>
+				<th class="col-debit right">Debit</th>
+				<th class="col-credit right">Credit</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for row in data %}
+			{% set is_opening = row.particulars and 'Opening Balance' in row.particulars %}
+			{% set is_closing = row.particulars and 'Closing Balance' in row.particulars %}
+			{% set is_total = (not row.posting_date or row.posting_date == '') and row.particulars == '' %}
+			<tr class="{% if is_opening %}opening-row{% elif is_closing %}closing-row{% elif is_total %}total-row{% endif %}">
+				<td class="col-date">
+					{% if row.posting_date and row.posting_date != '' %}
+						{{ frappe.utils.formatdate(row.posting_date, "dd-MM-yyyy") }}
+					{% endif %}
+				</td>
+				<td class="col-particulars">{{ row.particulars or "" }}</td>
+				<td class="col-vch-type">{{ row.vch_type or "" }}</td>
+				<td class="col-vch-no">{{ row.vch_no or "" }}</td>
+				<td class="col-debit right">
+					{% if row.debit and row.debit != 0 %}
+						{{ "%.0f" | format(row.debit) }}
+					{% endif %}
+				</td>
+				<td class="col-credit right">
+					{% if row.credit and row.credit != 0 %}
+						{{ "%.0f" | format(row.credit) }}
+					{% endif %}
+				</td>
+			</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+</body>
+</html>

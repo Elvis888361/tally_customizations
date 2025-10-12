@@ -79,6 +79,24 @@ app_license = "mit"
 # 	"filters": "tally_customizations.utils.jinja_filters"
 # }
 
+# Fixtures
+# --------
+# Load fixtures when installing app
+fixtures = [
+	{
+		"dt": "Print Format",
+		"filters": [
+			[
+				"name",
+				"in",
+				[
+					"Tally Invoice Print"
+				]
+			]
+		]
+	}
+]
+
 # Installation
 # ------------
 
