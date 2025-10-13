@@ -105,10 +105,11 @@
 		}
 
 		/* Column widths */
-		.col-date { width: 12%; }
-		.col-particulars { width: 30%; }
-		.col-vch-type { width: 15%; }
-		.col-vch-no { width: 15%; }
+		.col-sno { width: 5%; }
+		.col-date { width: 11%; }
+		.col-particulars { width: 28%; }
+		.col-vch-type { width: 14%; }
+		.col-vch-no { width: 14%; }
 		.col-debit { width: 14%; }
 		.col-credit { width: 14%; }
 	</style>
@@ -130,10 +131,11 @@
 	<table class="ledger-table">
 		<thead>
 			<tr>
+				<th class="col-sno">SI No</th>
 				<th class="col-date">Date</th>
 				<th class="col-particulars">Particulars</th>
 				<th class="col-vch-type">Vch Type</th>
-				<th class="col-vch-no">Vch No /Excise Inv No</th>
+				<th class="col-vch-no">Vch No</th>
 				<th class="col-debit right">Debit</th>
 				<th class="col-credit right">Credit</th>
 			</tr>
@@ -144,6 +146,11 @@
 			{% set is_closing = row.particulars and 'Closing Balance' in row.particulars %}
 			{% set is_total = (not row.posting_date or row.posting_date == '') and row.particulars == '' %}
 			<tr class="{% if is_opening %}opening-row{% elif is_closing %}closing-row{% elif is_total %}total-row{% endif %}">
+				<td class="col-sno">
+					{% if not (is_opening or is_closing or is_total or (row.particulars and 'Total' in row.particulars)) %}
+						{{ loop.index }}
+					{% endif %}
+				</td>
 				<td class="col-date">
 					{% if row.posting_date and row.posting_date != '' %}
 						{{ frappe.utils.formatdate(row.posting_date, "dd-MM-yyyy") }}
