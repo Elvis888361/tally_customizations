@@ -15,7 +15,7 @@ def execute(filters=None):
 	validate_filters(filters)
 	columns = get_columns(filters)
 	data = get_data(filters)
-
+	
 	return columns, data
 
 
@@ -36,7 +36,7 @@ def get_columns(filters):
 	columns = []
 
 	# Add account column if showing all accounts
-	if not filters.get("account"):
+	if not filters.get("account") and not (filters.get("party_type") and filters.get("party")):
 		columns.append({
 			"fieldname": "account",
 			"label": _("Account"),
@@ -49,7 +49,7 @@ def get_columns(filters):
 		{
 			"fieldname": "posting_date",
 			"label": _("Date"),
-			"fieldtype": "Date",
+			"fieldtype": "Data",
 			"width": 100
 		},
 		{
@@ -91,9 +91,9 @@ def get_data(filters):
 	"""Fetch and format data in Tally style"""
 	data = []
 
-	# Check if specific account is selected
-	if filters.get("account"):
-		# Single account view with opening/closing balance
+	# Check if specific account or party is selected
+	if filters.get("account") or (filters.get("party_type") and filters.get("party")):
+		# Single account/party view with opening/closing balance
 		data = get_single_account_data(filters)
 	else:
 		# All accounts view
@@ -109,23 +109,31 @@ def get_single_account_data(filters):
 	# Get opening balance
 	opening_balance = get_opening_balance(filters)
 
-	# Add opening balance row
-	opening_particulars = "By Opening Balance" if opening_balance > 0 else "To Opening Balance"
-	data.append(_dict(
-		posting_date="",
-		particulars=opening_particulars,
-		vch_type="",
-		vch_no="",
-		debit=flt(opening_balance) if opening_balance > 0 else 0.0,
-		credit=flt(abs(opening_balance)) if opening_balance < 0 else 0.0
-	))
+	# Format from_date for display
+	from_date_str = filters.get("from_date")
+	if isinstance(from_date_str, str):
+		from_date_obj = getdate(from_date_str)
+	else:
+		from_date_obj = from_date_str
+
+	# Add opening balance row - only add to data list for printing, not for display
+	opening_row = _dict({
+		"posting_date": frappe.utils.formatdate(from_date_obj, "d-M-yyyy"),
+		"particulars": "By Opening Balance",
+		"vch_type": "",
+		"vch_no": "",
+		"debit": opening_balance if opening_balance > 0 else 0,
+		"credit": abs(opening_balance) if opening_balance < 0 else 0,
+		"_is_opening": True
+	})
+	data.append(opening_row)
 
 	# Get GL entries for the period
 	gl_entries = get_gl_entries(filters)
 
 	# Track running totals
-	total_debit = flt(opening_balance) if opening_balance > 0 else 0.0
-	total_credit = flt(abs(opening_balance)) if opening_balance < 0 else 0.0
+	total_debit = opening_balance if opening_balance > 0 else 0.0
+	total_credit = abs(opening_balance) if opening_balance < 0 else 0.0
 
 	# Process each GL entry
 	for gle in gl_entries:
@@ -135,60 +143,71 @@ def get_single_account_data(filters):
 		# Map voucher type to Tally-style names
 		vch_type = map_voucher_type(gle.get("voucher_type", ""))
 
-		# Convert posting_date to string if it's a date object
+		# Format posting_date
 		posting_date = gle.get("posting_date")
 		if posting_date:
-			posting_date = str(posting_date) if not isinstance(posting_date, str) else posting_date
+			posting_date_str = frappe.utils.formatdate(posting_date, "d-M-yyyy")
+		else:
+			posting_date_str = ""
 
-		# Create row with only the required fields
-		data.append(_dict(
-			posting_date=posting_date,
-			particulars=particulars,
-			vch_type=vch_type,
-			vch_no=gle.get("voucher_no"),
-			debit=flt(gle.get("debit", 0)),
-			credit=flt(gle.get("credit", 0))
-		))
+		# Get amounts
+		debit_amt = flt(gle.get("debit", 0))
+		credit_amt = flt(gle.get("credit", 0))
+
+		# Create row as dict
+		row = _dict({
+			"posting_date": posting_date_str,
+			"particulars": particulars,
+			"vch_type": vch_type,
+			"vch_no": gle.get("voucher_no") or "",
+			"debit": debit_amt,
+			"credit": credit_amt
+		})
+		
+		data.append(row)
 
 		# Update totals
-		total_debit += flt(gle.get("debit", 0))
-		total_credit += flt(gle.get("credit", 0))
+		total_debit += debit_amt
+		total_credit += credit_amt
 
 	# Calculate closing balance
 	closing_balance = total_debit - total_credit
 
 	# Add closing balance row
-	closing_particulars = "To Closing Balance" if closing_balance > 0 else "By Closing Balance"
-	data.append(_dict(
-		posting_date="",
-		particulars=closing_particulars,
-		vch_type="",
-		vch_no="",
-		debit=flt(abs(closing_balance)) if closing_balance < 0 else 0.0,
-		credit=flt(closing_balance) if closing_balance > 0 else 0.0
-	))
+	closing_row = _dict({
+		"posting_date": "",
+		"particulars": "To Closing Balance",
+		"vch_type": "",
+		"vch_no": "",
+		"debit": closing_balance if closing_balance > 0 else 0,
+		"credit": abs(closing_balance) if closing_balance < 0 else 0,
+		"_is_closing": True
+	})
+	data.append(closing_row)
 
 	# Update totals to balance
 	if closing_balance < 0:
-		total_debit += flt(abs(closing_balance))
+		total_debit += abs(closing_balance)
 	else:
-		total_credit += flt(closing_balance)
+		total_credit += closing_balance
 
-	# Add total row
-	data.append(_dict(
-		posting_date="",
-		particulars="",
-		vch_type="",
-		vch_no="",
-		debit=flt(total_debit),
-		credit=flt(total_credit)
-	))
+	# Add final total row
+	total_row = _dict({
+		"posting_date": "",
+		"particulars": "",
+		"vch_type": "",
+		"vch_no": "",
+		"debit": total_debit,
+		"credit": total_credit,
+		"_is_total": True
+	})
+	data.append(total_row)
 
 	return data
 
 
 def get_all_accounts_data(filters):
-	"""Get data for all accounts"""
+	"""Get data for all accounts - just transactions and total"""
 	data = []
 
 	# Get GL entries for all accounts
@@ -206,60 +225,98 @@ def get_all_accounts_data(filters):
 		# Map voucher type to Tally-style names
 		vch_type = map_voucher_type(gle.get("voucher_type", ""))
 
-		# Convert posting_date to string if it's a date object
+		# Format posting_date
 		posting_date = gle.get("posting_date")
 		if posting_date:
-			posting_date = str(posting_date) if not isinstance(posting_date, str) else posting_date
+			posting_date_str = frappe.utils.formatdate(posting_date, "d-M-yyyy")
+		else:
+			posting_date_str = ""
 
-		# Create row with only the required fields
-		data.append(_dict(
-			account=gle.get("account"),
-			posting_date=posting_date,
-			particulars=particulars,
-			vch_type=vch_type,
-			vch_no=gle.get("voucher_no"),
-			debit=flt(gle.get("debit", 0)),
-			credit=flt(gle.get("credit", 0))
-		))
+		# Get amounts
+		debit_amt = flt(gle.get("debit", 0))
+		credit_amt = flt(gle.get("credit", 0))
+
+		# Create row as dict
+		row = _dict({
+			"account": gle.get("account") or "",
+			"posting_date": posting_date_str,
+			"particulars": particulars or "",
+			"vch_type": vch_type or "",
+			"vch_no": gle.get("voucher_no") or "",
+			"debit": debit_amt,
+			"credit": credit_amt
+		})
+		
+		data.append(row)
 
 		# Update totals
-		total_debit += flt(gle.get("debit", 0))
-		total_credit += flt(gle.get("credit", 0))
+		total_debit += debit_amt
+		total_credit += credit_amt
 
-	# Add total row with explicit string conversions
+	# Add total row - just totals, no closing balance for all accounts view
 	if data:
-		data.append(_dict(
-			account="",
-			posting_date="",
-			particulars="Total",
-			vch_type="",
-			vch_no="",
-			debit=flt(total_debit),
-			credit=flt(total_credit)
-		))
+		total_row = _dict({
+			"account": "",
+			"posting_date": "",
+			"particulars": "Total",
+			"vch_type": "",
+			"vch_no": "",
+			"debit": total_debit,
+			"credit": total_credit,
+			"_is_total": True
+		})
+		data.append(total_row)
 
 	return data
 
 
 def get_opening_balance(filters):
 	"""Calculate opening balance before from_date"""
-	if not filters.get("account"):
+	conditions = []
+	values = {
+		"company": filters.get("company"),
+		"from_date": filters.get("from_date")
+	}
+
+	# Add account condition if specified
+	if filters.get("account"):
+		conditions.append("account = %(account)s")
+		values["account"] = filters.get("account")
+
+	# Add party filters
+	if filters.get("party_type") and filters.get("party"):
+		party = filters.get("party")
+		if isinstance(party, (list, tuple)) and len(party) > 0:
+			# For multiple parties, calculate combined opening balance
+			party_placeholders = ', '.join([f"%(party_{idx})s" for idx in range(len(party))])
+			conditions.append(f"party_type = %(party_type)s AND party IN ({party_placeholders})")
+			values["party_type"] = filters.get("party_type")
+			for idx, p in enumerate(party):
+				values[f"party_{idx}"] = p
+		else:
+			# Single party
+			if isinstance(party, list):
+				party = party[0] if party else None
+			if party:
+				conditions.append("party_type = %(party_type)s AND party = %(party)s")
+				values["party_type"] = filters.get("party_type")
+				values["party"] = party
+
+	if not conditions:
 		return 0.0
 
-	opening = frappe.db.sql("""
+	where_clause = " AND ".join(conditions)
+
+	opening = frappe.db.sql(f"""
 		SELECT
 			SUM(debit) - SUM(credit) as balance
 		FROM `tabGL Entry`
 		WHERE
-			account = %(account)s
+			{where_clause}
 			AND company = %(company)s
 			AND posting_date < %(from_date)s
 			AND is_cancelled = 0
-	""", {
-		"account": filters.get("account"),
-		"company": filters.get("company"),
-		"from_date": filters.get("from_date")
-	}, as_dict=1)
+	""", values, as_dict=1)
 
 	return flt(opening[0].balance) if opening and opening[0].balance else 0.0
 
@@ -279,14 +336,11 @@ def get_gl_entries(filters):
 		party = filters.get("party")
 		if isinstance(party, (list, tuple)) and len(party) > 0:
 			# Use IN clause for multiple parties
-			party_list = ', '.join(['%s'] * len(party))
-			conditions.append(f"party_type = %(party_type)s AND party IN ({party_list})")
+			party_placeholders = ', '.join([f"%(party_{idx})s" for idx in range(len(party))])
+			conditions.append(f"party_type = %(party_type)s AND party IN ({party_placeholders})")
 			# Add party values to SQL parameters
 			for idx, p in enumerate(party):
 				values[f"party_{idx}"] = p
-			# Rebuild the query with named parameters
-			party_placeholders = ', '.join([f"%(party_{idx})s" for idx in range(len(party))])
-			conditions[-1] = f"party_type = %(party_type)s AND party IN ({party_placeholders})"
 		else:
 			# Single party or string
 			if isinstance(party, list):
@@ -326,27 +380,19 @@ def get_gl_entries(filters):
 
 def format_particulars(gle):
 	"""Format particulars in Tally style with To/By prefix"""
-	# In Tally:
-	# - "By" is used when money comes from an account (credit side / source)
-	# - "To" is used when money goes to an account (debit side / destination)
-
-	# For the selected account:
-	# - If debit > 0, money is coming "To" this account, so show "By <contra account>"
-	# - If credit > 0, money is going "From" this account, so show "To <contra account>"
-
 	prefix = ""
 	contra_account = ""
 
 	if gle.get("debit") > 0:
-		# Debit entry - money coming to this account, so it's "By <source>"
+		# Debit entry - money coming to this account
 		prefix = "By"
 		contra_account = gle.get("against") or gle.get("party") or "Various"
 	elif gle.get("credit") > 0:
-		# Credit entry - money going from this account, so it's "To <destination>"
+		# Credit entry - money going from this account
 		prefix = "To"
 		contra_account = gle.get("against") or gle.get("party") or "Various"
 
-	# Clean up contra account (remove extra characters)
+	# Clean up contra account
 	if contra_account:
 		# Handle multiple accounts (comma-separated)
 		if "," in contra_account:
@@ -362,7 +408,7 @@ def map_voucher_type(voucher_type):
 	mapping = {
 		"Sales Invoice": "Sales",
 		"Purchase Invoice": "Purchase",
-		"Payment Entry": "Payment",
+		"Payment Entry": "Receipt",
 		"Journal Entry": "Journal",
 		"Credit Note": "Credit Note",
 		"Debit Note": "Debit Note",
@@ -410,8 +456,8 @@ def get_print_html(filters, data, company, company_address, account_name, ledger
 		"company_address": company_address,
 		"account_name": account_name,
 		"ledger_type": ledger_type,
-		"from_date": frappe.utils.formatdate(filters.get("from_date"), "dd-MM-yyyy"),
-		"to_date": frappe.utils.formatdate(filters.get("to_date"), "dd-MM-yyyy"),
+		"from_date": frappe.utils.formatdate(filters.get("from_date"), "d-MMM-yyyy"),
+		"to_date": frappe.utils.formatdate(filters.get("to_date"), "d-MMM-yyyy"),
 		"currency": company_currency,
 		"data": data,
 		"frappe": frappe

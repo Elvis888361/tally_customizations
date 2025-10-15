@@ -1,559 +1,447 @@
-<div class="tally-invoice-print">
-	<style>
-		.tally-invoice-print {
-			font-family: Arial, sans-serif;
-			font-size: 10pt;
-			color: #000;
-			padding: 10px;
-			max-width: 210mm;
-			margin: 0 auto;
-			background: white;
-		}
-
-		.invoice-header {
-			text-align: center;
-			font-size: 16pt;
-			font-weight: bold;
-			margin-bottom: 1px;
-			padding-bottom: 1px;
-		}
-
-		.invoice-container {
-			border: 2px solid #000;
-			position: relative;
-		}
-
-		.watermark {
-			position: absolute;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			opacity: 0.1;
-			z-index: 0;
-			pointer-events: none;
-		}
-
-		.watermark img {
-			max-width: 400px;
-			max-height: 400px;
-			width: auto;
-			height: auto;
-		}
-
-		.header-section,
-		.info-grid-table,
-		.items-table,
-		.total-section,
-		.amount-words-section {
-			position: relative;
-			z-index: 1;
-			background: transparent;
-		}
-
-		.header-section {
-			border-bottom: 2px solid #000;
-			min-height: 40px;
-			padding: 4px 10px;
-		}
-
-		.company-name {
-			font-weight: bold;
-			font-size: 10pt;
-			margin-bottom: 1px;
-		}
-
-		.company-phone {
-			font-size: 8pt;
-			margin-bottom: 2px;
-		}
-
-		.info-grid-table {
-			width: 100%;
-			border-collapse: collapse;
-			border-bottom: 2px solid #000;
-		}
-
-		.left-column {
-			width: 50%;
-			padding: 4px 8px;
-			border-right: 2px solid #000;
-			vertical-align: top;
-		}
-
-		.info-label {
-			font-size: 8pt;
-			color: #000;
-			margin-bottom: 2px;
-			font-weight: normal;
-		}
-
-		.info-value {
-			font-weight: bold;
-			font-size: 9pt;
-			margin-bottom: 6px;
-			line-height: 1.2;
-		}
-
-		.right-cell-label {
-			width: 20%;
-			vertical-align: middle;
-			padding: 1px 6px;
-			font-size: 7pt;
-			border-bottom: 1px solid #000;
-			border-right: 1px solid #000;
-			box-sizing: border-box;
-		}
-
-		.right-cell-value {
-			width: 30%;
-			vertical-align: middle;
-			padding: 1px 6px;
-			font-size: 8pt;
-			border-bottom: 1px solid #000;
-			box-sizing: border-box;
-		}
-
-		.items-table {
-			width: 100%;
-			border-collapse: collapse;
-		}
-
-		.items-table thead {
-			border-bottom: 2px solid #000;
-		}
-
-		.items-table th {
-			padding: 4px 4px;
-			font-weight: normal;
-			font-size: 8pt;
-			text-align: center;
-			border-right: 1px solid #000;
-		}
-
-		.items-table th:first-child {
-			border-left: none;
-		}
-
-		.items-table th:last-child {
-			border-right: none;
-		}
-
-		.items-table td {
-			padding: 3px 4px;
-			font-size: 9pt;
-			border-right: 1px solid #000;
-			vertical-align: top;
-		}
-
-		.items-table td:first-child {
-			border-left: none;
-		}
-
-		.items-table td:last-child {
-			border-right: none;
-		}
-
-		.items-table .sno-col {
-			width: 5%;
-			text-align: center;
-		}
-
-		.items-table .desc-col {
-			width: 40%;
-			padding-left: 10px;
-		}
-
-		.items-table .qty-col {
-			width: 15%;
-			text-align: right;
-			padding-right: 15px;
-		}
-
-		.items-table .rate-col {
-			width: 13%;
-			text-align: right;
-			padding-right: 15px;
-		}
-
-		.items-table .per-col {
-			width: 12%;
-			text-align: center;
-		}
-
-		.items-table .amount-col {
-			width: 15%;
-			text-align: right;
-			padding-right: 15px;
-		}
-
-		.item-desc-main {
-			font-weight: bold;
-			font-size: 9pt;
-		}
-
-		.item-desc-sub {
-			font-size: 8pt;
-			color: #333;
-			margin-top: 2px;
-		}
-
-		.qty-main {
-			font-size: 9pt;
-		}
-
-		.total-section {
-			border-top: 2px solid #000;
-			padding: 4px 10px;
-			text-align: right;
-			font-size: 10pt;
-		}
-
-		.total-label {
-			display: inline-block;
-			width: 80%;
-			text-align: right;
-			padding-right: 20px;
-		}
-
-		.total-amount {
-			display: inline-block;
-			width: 15%;
-			text-align: right;
-			font-weight: bold;
-		}
-
-		.eoe-text {
-			font-size: 8pt;
-			color: #666;
-			margin-top: 1px;
-		}
-
-		.amount-words-section {
-			border-top: 2px solid #000;
-			padding: 4px 10px;
-		}
-
-		.amount-words-label {
-			font-size: 8pt;
-			margin-bottom: 2px;
-		}
-
-		.amount-words-value {
-			font-weight: bold;
-			font-size: 9pt;
-		}
-
-		.footer-table {
-			width: 100%;
-			border-collapse: collapse;
-			border-top: 2px solid #000;
-		}
-
-		.footer-left,
-		.footer-right {
-			width: 50%;
-			padding: 4px 8px;
-			vertical-align: top;
-			border-bottom: 2px solid #000;
-		}
-
-		.footer-left {
-			border-right: 2px solid #000;
-		}
-
-		.footer-section-title {
-			font-size: 8pt;
-			font-weight: bold;
-			margin-bottom: 3px;
-		}
-
-		.footer-text {
-			font-size: 7pt;
-			line-height: 1.3;
-		}
-
-		.bank-details-table {
-			width: 100%;
-			border-collapse: collapse;
-			margin-bottom: 6px;
-		}
-
-		.bank-label {
-			font-size: 7pt;
-			padding: 1px 5px 1px 0;
-			width: 35%;
-		}
-
-		.bank-value {
-			font-size: 7pt;
-			padding: 1px 0;
-			font-weight: bold;
-		}
-
-		.signatory-text {
-			font-size: 7pt;
-			text-align: right;
-			margin-top: 10px;
-			margin-bottom: 1px;
-		}
-
-		.signatory-label {
-			font-size: 7pt;
-			text-align: right;
-		}
-
-		.computer-generated {
-			text-align: center;
-			font-size: 8pt;
-			padding: 4px 0;
-			font-weight: normal;
-		}
-
-		@media print {
-			.tally-invoice-print {
-				padding: 0;
-			}
-
-			@page {
-				margin: 10mm;
-				size: A4;
-			}
-
-			.invoice-container {
-				page-break-inside: avoid;
-			}
-
-		}
-	</style>
-
-	<div class="invoice-header">INVOICE</div>
-
-	<div class="invoice-container">
-		<!-- Watermark -->
-		{% set company_logo = frappe.db.get_value("Company", doc.company, "company_logo") %}
-		{% if company_logo %}
-		<div class="watermark">
-			<img src="{{ company_logo }}" alt="Company Logo">
-		</div>
-		{% endif %}
-
-		<!-- Header with company info -->
-		<div class="header-section">
-			<div class="company-name">{{ doc.company }}</div>
-			{% if frappe.db.get_value("Company", doc.company, "phone_no") %}
-			<div class="company-phone">Tel: {{ frappe.db.get_value("Company", doc.company, "phone_no") }}</div>
-			{% endif %}
-		</div>
-
-		<!-- Info Grid Section -->
-		<table class="info-grid-table">
-			<tr>
-				<!-- Left Column -->
-				<td class="left-column" rowspan="14">
-					<div>
-						<div class="info-label">Consignee</div>
-						<div class="info-value">
-							{{ doc.customer_name or doc.customer }}<br>
-							{% if doc.shipping_address_name %}
-								{{ frappe.db.get_value("Address", doc.shipping_address_name, "address_line1") or "" }}
-							{% endif %}
-						</div>
-					</div>
-
-					<div>
-						<div class="info-label">Buyer (if other than consignee)</div>
-						<div class="info-value">
-							{{ doc.customer_name or doc.customer }}<br>
-							{% if doc.customer_address %}
-								{{ doc.address_display or "" }}
-							{% endif %}
-						</div>
-					</div>
-				</td>
-
-				<!-- Right Column - 2 columns -->
-				<td class="right-cell-label">Invoice No.</td>
-				<td class="right-cell-value">{{ doc.name }}</td>
-			</tr>
-			<tr>
-				<td class="right-cell-label">Dated</td>
-				<td class="right-cell-value">{{ frappe.utils.formatdate(doc.posting_date, "dd-MMM-yyyy") }}</td>
-			</tr>
-
-			<tr>
-				<td class="right-cell-label">Delivery Note</td>
-				<td class="right-cell-value">{{ doc.delivery_note or "" }}</td>
-			</tr>
-			<tr>
-				<td class="right-cell-label">Mode/Terms of Payment</td>
-				<td class="right-cell-value">{{ doc.payment_terms_template or "" }}</td>
-			</tr>
-
-			<tr>
-				<td class="right-cell-label">Reference No. & Date</td>
-				<td class="right-cell-value">{{ doc.po_no or "" }}{% if doc.po_date %} dt. {{ frappe.utils.formatdate(doc.po_date, "dd-MMM-yyyy") }}{% endif %}</td>
-			</tr>
-			<tr>
-				<td class="right-cell-label">Other Reference</td>
-				<td class="right-cell-value">{{ doc.remarks or "" }}</td>
-			</tr>
-
-			<tr>
-				<td class="right-cell-label">Buyer's Order No.</td>
-				<td class="right-cell-value">{{ doc.po_no or "" }}</td>
-			</tr>
-			<tr>
-				<td class="right-cell-label">Dated</td>
-				<td class="right-cell-value">{{ frappe.utils.formatdate(doc.po_date, "dd-MMM-yyyy") if doc.po_date else "" }}</td>
-			</tr>
-
-			<tr>
-				<td class="right-cell-label">Despatch Doc No.</td>
-				<td class="right-cell-value">{{ doc.lr_no or "" }}</td>
-			</tr>
-			<tr>
-				<td class="right-cell-label">Delivery Note Date</td>
-				<td class="right-cell-value">{{ frappe.utils.formatdate(doc.lr_date, "dd-MMM-yyyy") if doc.lr_date else "" }}</td>
-			</tr>
-
-			<tr>
-				<td class="right-cell-label">Despatched through</td>
-				<td class="right-cell-value">{{ doc.transporter_name or "" }}</td>
-			</tr>
-			<tr>
-				<td class="right-cell-label">Destination</td>
-				<td class="right-cell-value">{{ doc.shipping_address_name or "" }}</td>
-			</tr>
-
-			<tr>
-				<td class="right-cell-label">Terms of Delivery</td>
-				<td class="right-cell-value">{{ doc.delivery_date or "" }}</td>
-			</tr>
-			<tr>
-				<td class="right-cell-label" style="border-bottom: none;"></td>
-				<td class="right-cell-value" style="border-bottom: none;"></td>
-			</tr>
-		</table>
-
-		<!-- Items Table -->
-		<table class="items-table">
-			<thead>
-				<tr>
-					<th class="sno-col">Sl<br>No</th>
-					<th class="desc-col">Description of Goods</th>
-					<th class="qty-col">Quantity</th>
-					<th class="rate-col">Rate</th>
-					<th class="per-col">per</th>
-					<th class="amount-col">Amount</th>
-				</tr>
-			</thead>
-			<tbody>
-				{% for item in doc.items %}
-				<tr>
-					<td class="sno-col">{{ loop.index }}</td>
-					<td class="desc-col">
-						<div class="item-desc-main">{{ item.item_name or item.item_code }}</div>
-						{% if item.description and item.description != item.item_name %}
-						<div class="item-desc-sub">{{ item.description }}</div>
-						{% endif %}
-					</td>
-					<td class="qty-col">
-						<div class="qty-main">{{ "%.0f" | format(item.qty) }} {{ item.uom|lower }}</div>
-					</td>
-					<td class="rate-col">
-						<div class="qty-main">{{ "{:,.0f}".format(item.rate) }}</div>
-					</td>
-					<td class="per-col">
-						<div class="qty-main">{{ item.uom|lower }}</div>
-					</td>
-					<td class="amount-col">
-						<div class="qty-main">{{ "{:,.0f}".format(item.amount) }}</div>
-					</td>
-				</tr>
-				{% endfor %}
-
-				<!-- Empty rows -->
-				{% set filled = doc.items|length %}
-				{% set empty_rows = 2 %}
-				{% for i in range(empty_rows) %}
-				<tr>
-					<td class="sno-col">&nbsp;</td>
-					<td class="desc-col">&nbsp;</td>
-					<td class="qty-col">&nbsp;</td>
-					<td class="rate-col">&nbsp;</td>
-					<td class="per-col">&nbsp;</td>
-					<td class="amount-col">&nbsp;</td>
-				</tr>
-				{% endfor %}
-			</tbody>
-		</table>
-
-		<!-- Total Section -->
-		<div class="total-section">
-			<span class="total-label">Total</span>
-			<span class="total-amount">
-				{{ doc.currency|lower }} {{ "{:,.0f}".format(doc.grand_total) }}<br>
-				<span class="eoe-text">E & O.E</span>
-			</span>
-		</div>
-
-		<!-- Amount in Words -->
-		<div class="amount-words-section">
-			<div class="amount-words-label">Amount Chargeable (in words)</div>
-			<div class="amount-words-value">
-				{{ frappe.utils.money_in_words(doc.grand_total, doc.currency) }}
-			</div>
-		</div>
-
-		<!-- Footer Section -->
-		{% set company_bank_account = frappe.db.get_value("Company", doc.company, "default_bank_account") %}
-		<table class="footer-table">
-			<tr>
-				<td class="footer-left">
-					<div class="footer-section-title">Declaration</div>
-					<div class="footer-text">
-						We declare that this invoice shows the actual price of the<br>
-						goods described and that all particulars are true and<br>
-						correct.
-					</div>
-				</td>
-				<td class="footer-right">
-					<div class="footer-section-title">Company's Bank Details</div>
-					<table class="bank-details-table">
-						<tr>
-							<td class="bank-label">Bank Name</td>
-							<td class="bank-value">
-								{% if company_bank_account %}
-									{{ frappe.db.get_value("Bank Account", company_bank_account, "bank") or "" }}
-								{% endif %}
-							</td>
-						</tr>
-						<tr>
-							<td class="bank-label">A/C No.</td>
-							<td class="bank-value">
-								{% if company_bank_account %}
-									{{ frappe.db.get_value("Bank Account", company_bank_account, "bank_account_no") or "" }}
-								{% endif %}
-							</td>
-						</tr>
-						<tr>
-							<td class="bank-label">Branch & IFS Code</td>
-							<td class="bank-value">
-								{% if company_bank_account %}
-									{{ frappe.db.get_value("Bank Account", company_bank_account, "branch_code") or "" }}
-								{% endif %}
-							</td>
-						</tr>
-					</table>
-					<div class="signatory-text">for {{ doc.company }}</div>
-					<div class="signatory-label">Authorised Signatory</div>
-				</td>
-			</tr>
-		</table>
-
-		<!-- Computer Generated Invoice -->
-		<div class="computer-generated">
-			This is a Computer Generated Invoice
-		</div>
-	</div>
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+body {
+    font-family: Arial, sans-serif;
+    background: white;
+    padding: 10px;
+    font-size: 9pt;
+}
+.invoice-page {
+    width: 80%;
+    margin: 0 auto;
+    background: white;
+    position: relative;
+}
+/* Background Logo */
+.background-logo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.05;
+    z-index: 0;
+    max-width: 400px;
+    max-height: 400px;
+}
+.content-wrapper {
+    position: relative;
+    z-index: 1;
+}
+.invoice-title {
+    text-align: center;
+    font-size: 18pt;
+    font-weight: bold;
+    margin-bottom: 5px;
+    letter-spacing: 3px;
+}
+.main-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 2px solid #000;
+}
+/* Header Section */
+.header-cell {
+    border-bottom: 2px solid #000;
+    padding: 8px 10px;
+}
+.company-name {
+    font-weight: bold;
+    font-size: 10pt;
+    margin-bottom: 1px;
+}
+.company-phone {
+    font-size: 8.5pt;
+}
+/* Left column */
+.left-col {
+    width: 50%;
+    border-right: 2px solid #000;
+    padding: 10px 12px;
+    vertical-align: top;
+}
+/* Right side grid cells */
+.right-grid-cell {
+    border-right: 1px solid #000;
+    border-bottom: 1px solid #000;
+    padding: 4px 8px;
+    font-size: 8.5pt;
+    vertical-align: top;
+    line-height: 1.3;
+    width: 25%;
+}
+.right-grid-cell-last {
+    border-bottom: 1px solid #000;
+    padding: 4px 8px;
+    font-size: 8.5pt;
+    vertical-align: top;
+    line-height: 1.3;
+    width: 25%;
+}
+.no-border-bottom {
+    border-bottom: none !important;
+}
+.consignee-section {
+    margin-bottom: 25px;
+}
+.buyer-section {
+    margin-bottom: 0;
+}
+.section-label {
+    font-size: 8.5pt;
+    margin-bottom: 3px;
+    color: #000;
+}
+.section-value {
+    font-size: 10pt;
+    font-weight: bold;
+    line-height: 1.3;
+}
+/* Items table header */
+.items-header {
+    border-top: 2px solid #000;
+    border-bottom: 2px solid #000;
+}
+.items-header td {
+    padding: 6px 4px;
+    text-align: center;
+    font-size: 9.5pt;
+    font-weight: normal;
+    vertical-align: middle;
+}
+/* Items body */
+.items-row td {
+    padding: 5px 6px;
+    font-size: 9.5pt;
+    vertical-align: top;
+    line-height: 1.4;
+}
+.col-sl {
+    width: 5%;
+    text-align: center;
+    border-right: 1px solid #000;
+}
+.col-desc {
+    width: 35%;
+    padding-left: 8px;
+    text-align: left;
+    border-right: 1px solid #000;
+}
+.col-qty {
+    width: 18%;
+    text-align: right;
+    padding-right: 12px;
+    border-right: 1px solid #000;
+}
+.col-rate {
+    width: 15%;
+    text-align: right;
+    padding-right: 12px;
+    border-right: 1px solid #000;
+}
+.col-per {
+    width: 10%;
+    text-align: center;
+    border-right: 1px solid #000;
+}
+.col-amount {
+    width: 17%;
+    text-align: right;
+    padding-right: 12px;
+}
+.item-main {
+    font-weight: bold;
+    font-size: 9.5pt;
+}
+/* Total row */
+.total-row {
+    border-top: 2px solid #000;
+    border-bottom: 2px solid #000;
+}
+.total-row td {
+    padding: 6px 10px;
+    text-align: right;
+}
+.total-label-cell {
+    text-align: right;
+    font-size: 10pt;
+    font-weight: normal;
+}
+.total-amount-cell {
+    text-align: right;
+    font-size: 10pt;
+    padding-right: 12px;
+    font-weight: normal;
+}
+.eoe-text {
+    font-size: 8pt;
+    display: block;
+    margin-top: 2px;
+}
+/* Amount in words */
+.words-row td {
+    border-bottom: 2px solid #000;
+    padding: 8px 10px;
+}
+.words-label {
+    font-size: 8.5pt;
+    margin-bottom: 3px;
+}
+.words-value {
+    font-size: 10pt;
+    font-weight: bold;
+}
+@media print {
+    body {
+        padding: 0;
+    }
+    .invoice-page {
+        margin: 0;
+    }
+}
+</style>
+</head>
+<body>
+<div class="invoice-page">
+    <!-- Background Logo -->
+    {% set company_logo = frappe.db.get_value("Company", doc.company, "company_logo") %}
+    {% if company_logo %}
+    <img src="{{ company_logo }}" class="background-logo" alt="Company Logo">
+    {% endif %}
+    
+    <div class="content-wrapper">
+        <div class="invoice-title">INVOICE</div>
+        
+        <table class="main-table">
+            <!-- Company Header -->
+            <tr>
+                <td colspan="3" class="header-cell">
+                    <div class="company-name">{{ doc.company }}</div>
+                    {% set phone = frappe.db.get_value("Company", doc.company, "phone_no") %}
+                    {% if phone %}
+                    <div class="company-phone">Tel: {{ phone }}</div>
+                    {% endif %}
+                </td>
+            </tr>
+
+            <!-- Row 1 -->
+            <tr>
+                <td class="left-col" rowspan="7">
+                    <div class="consignee-section">
+                        <div class="section-label">Consignee</div>
+                        <div class="section-value">
+                            {{ doc.customer_name or doc.customer }}<br>
+                            {% if doc.shipping_address_name %}
+                            {{ frappe.db.get_value("Address", doc.shipping_address_name, "address_line1") or "" }}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="buyer-section">
+                        <div class="section-label">Buyer (if other than consignee)</div>
+                        <div class="section-value">
+                            {{ doc.customer_name or doc.customer }}<br>
+                            {% if doc.customer_address %}
+                            {{ doc.address_display or "" }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </td>
+                <td class="right-grid-cell">
+                    Invoice No.<br>
+                    <strong>{{ doc.name }}</strong>
+                </td>
+                <td class="right-grid-cell-last">
+                    Dated<br>
+                    <strong>{{ frappe.utils.formatdate(doc.posting_date, "dd-MMM-yyyy") }}</strong>
+                </td>
+            </tr>
+
+            <!-- Row 2 -->
+            <tr>
+                <td class="right-grid-cell">
+                    Delivery Note<br>
+                    <strong>{{ doc.delivery_note or "" }}</strong>
+                </td>
+                <td class="right-grid-cell-last">
+                    Mode/Terms of Payment<br>
+                    <strong>{{ doc.payment_terms_template or "" }}</strong>
+                </td>
+            </tr>
+
+            <!-- Row 3 -->
+            <tr>
+                <td class="right-grid-cell">
+                    Supplier's Ref.<br>
+                    <strong>{{ doc.supplier or "" }}</strong><br>
+                </td>
+                <td class="right-grid-cell-last">
+                    Other Reference(s)<br>
+                    <strong></strong>
+                </td>
+            </tr>
+
+        
+
+            <!-- Row 5 -->
+            <tr>
+                <td class="right-grid-cell">
+                    Buyer's Order No.<br>
+                    <strong>{{ doc.po_no or "" }}</strong>
+                </td>
+                <td class="right-grid-cell-last">
+                    Dated<br>
+                    <strong>{{ frappe.utils.formatdate(doc.po_date, "dd-MMM-yyyy") if doc.po_date else "" }}</strong>
+                </td>
+            </tr>
+
+            <!-- Row 6 -->
+            <tr>
+                <td class="right-grid-cell">
+                    Despatch Document No.<br>
+                    <strong>{{ doc.lr_no or "" }}</strong>
+                </td>
+                <td class="right-grid-cell-last">
+                    Dated<br>
+                    <strong></strong>
+                </td>
+            </tr>
+
+
+            <!-- Row 8 -->
+            <tr>
+                <td class="right-grid-cell">
+                    Despatched through<br>
+                    <strong>{{ doc.transporter_name or "" }}</strong>
+                </td>
+                <td class="right-grid-cell-last">
+                    Destination<br>
+                    <strong>{{ doc.shipping_address_name or "" }}</strong>
+                </td>
+            </tr>
+
+
+            <!-- Row 11 -->
+            <tr>
+                <td >
+                    Terms of Delivery<br>
+                    <strong>{{ doc.delivery_date or "" }}</strong>
+                </td>
+            </tr>
+
+            
+
+            
+            
+            <!-- Items Table Header -->
+            <tr class="items-header">
+                <td colspan="3" style="padding: 0;">
+                    <table style="width: 100%; border-collapse: collapse; margin: 0;">
+                        <tr>
+                            <td class="col-sl" style="border: none; padding: 6px 4px;">Sl<br>No</td>
+                            <td class="col-desc" style="border: none; padding: 6px 4px;">Description of Goods</td>
+                            <td class="col-qty" style="border: none; padding: 6px 4px;">Quantity</td>
+                            <td class="col-rate" style="border: none; padding: 6px 4px;">Rate</td>
+                            <td class="col-per" style="border: none; padding: 6px 4px;">per</td>
+                            <td class="col-amount" style="border: none; padding: 6px 4px;">Amount</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+
+            <!-- Item Rows -->
+            {% for item in doc.items %}
+            <tr class="items-row">
+                <td colspan="3" style="padding: 0;">
+                    <table style="width: 100%; border-collapse: collapse; margin: 0;">
+                        <tr>
+                            <td class="col-sl" style="border: none; padding: 5px 6px;">{{ loop.index }}</td>
+                            <td class="col-desc" style="border: none; padding: 5px 6px;">
+                                <span class="item-main">{{ item.item_name }}</span>
+                                {% if item.description and item.description != item.item_name %}
+                                <br><span style="font-size: 8.5pt;">{{ item.description }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="col-qty" style="border: none; padding: 5px 6px;">
+                                {{ "{:,.0f}".format(item.qty) }} {{ item.uom or "pcs" }}
+                                {% if item.stock_uom and item.stock_uom != item.uom %}
+                                <br>{{ "{:,.2f}".format(item.qty * (item.conversion_factor or 1)) }} {{ item.stock_uom }}
+                                {% endif %}
+                            </td>
+                            <td class="col-rate" style="border: none; padding: 5px 6px;">
+                                {{ "{:,.0f}".format(item.rate) }}
+                                {% if item.base_rate and item.base_rate != item.rate %}
+                                <br>{{ "{:,.0f}".format(item.base_rate) }}
+                                {% endif %}
+                            </td>
+                            <td class="col-per" style="border: none; padding: 5px 6px;">
+                                {{ item.uom or "pcs" }}
+                                {% if item.stock_uom and item.stock_uom != item.uom %}
+                                <br>{{ item.stock_uom }}
+                                {% endif %}
+                            </td>
+                            <td class="col-amount" style="border: none; padding: 5px 6px;">
+                                {{ "{:,.0f}".format(item.amount) }}
+                                {% if item.base_amount and item.base_amount != item.amount %}
+                                <br>{{ "{:,.0f}".format(item.base_amount) }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            {% endfor %}
+
+            <!-- Empty rows -->
+            {% set total_items = doc.items|length %}
+            {% set empty_rows = 5 - total_items %}
+            {% for i in range(empty_rows if empty_rows > 0 else 0) %}
+            <tr class="items-row" style="">
+                <td colspan="3" style="padding: 0;">
+                    <table style="width: 100%; border-collapse: collapse; margin: 0;">
+                        <tr>
+                            <td class="col-sl" style="border: none; padding: 5px 6px;">&nbsp;</td>
+                            <td class="col-desc" style="border: none; padding: 5px 6px;">&nbsp;</td>
+                            <td class="col-qty" style="border: none; padding: 5px 6px;">&nbsp;</td>
+                            <td class="col-rate" style="border: none; padding: 5px 6px;">&nbsp;</td>
+                            <td class="col-per" style="border: none; padding: 5px 6px;">&nbsp;</td>
+                            <td class="col-amount" style="border: none; padding: 5px 6px;">&nbsp;</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            {% endfor %}
+
+            <!-- Total Row -->
+            <tr class="total-row">
+                <td colspan="3" style="padding: 0;">
+                    <table style="width: 100%; border-collapse: collapse; margin: 0;">
+                        <tr>
+                            <td colspan="5" class="total-label-cell" style="border: none; padding: 6px 10px;">Total</td>
+                            <td class="total-amount-cell" style="border: none; padding: 6px 10px;">
+                                {% if doc.currency == "UGX" %}ushs{% else %}{{ doc.currency.lower() }}{% endif %} {{ "{:,.0f}".format(doc.grand_total) }}
+                                <span class="eoe-text">E & O.E</span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+
+            <!-- Amount in Words -->
+            <tr class="words-row">
+                <td colspan="3">
+                    <div class="words-label">Amount Chargeable (in words)</div>
+                    <div class="words-value">{{ frappe.utils.money_in_words(doc.grand_total, doc.currency) }}</div>
+                </td>
+            </tr>
+        </table>
+    </div>
 </div>
+</body>
+</html>

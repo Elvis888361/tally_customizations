@@ -26,6 +26,21 @@ frappe.query_reports["Tally Ledger"] = {
 			"reqd": 1
 		},
 		{
+			"fieldname": "account",
+			"label": __("Account"),
+			"fieldtype": "Link",
+			"options": "Account",
+			"get_query": function() {
+				let company = frappe.query_report.get_filter_value('company');
+				return {
+					"filters": {
+						"company": company,
+						"is_group": 0
+					}
+				};
+			}
+		},
+		{
 			"fieldname": "party_type",
 			"label": __("Party Type"),
 			"fieldtype": "Autocomplete",
@@ -50,19 +65,26 @@ frappe.query_reports["Tally Ledger"] = {
 	],
 
 	"formatter": function(value, row, column, data, default_formatter) {
+		// Use default formatter first
 		value = default_formatter(value, row, column, data);
 
-		// Highlight opening and closing balance rows
-		if (data && data.particulars &&
-		    (data.particulars.includes("Opening Balance") ||
-		     data.particulars.includes("Closing Balance"))) {
-			value = $(`<span style="font-weight: bold;">${value}</span>`);
+		// Check for special rows using underscore properties
+		if (data && data._is_opening) {
+			// Opening balance row - make bold
+			return `<span style="font-weight: bold;">${value}</span>`;
 		}
 
-		// Highlight total row (last row with values)
-		if (data && !data.posting_date && !data.particulars &&
-		    (data.debit || data.credit)) {
-			value = $(`<span style="font-weight: bold; border-top: 2px solid #000;">${value}</span>`);
+		if (data && data._is_closing) {
+			// Closing balance row - make bold with indent for particulars
+			if (column.fieldname === "particulars") {
+				return `<span style="font-weight: bold; padding-left: 80px;">${value}</span>`;
+			}
+			return `<span style="font-weight: bold;">${value}</span>`;
+		}
+
+		if (data && data._is_total) {
+			// Total row - make bold with top border
+			return `<span style="font-weight: bold; border-top: 2px solid #000; display: inline-block; padding-top: 3px;">${value}</span>`;
 		}
 
 		return value;
