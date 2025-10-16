@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>{{ title }}</title>
+	<style>
+		@media print {
+			body {
+				margin: 0;
+				padding: 20px;
+			}
+			@page {
+				margin: 15mm;
+			}
+		}
+
+		body {
+			font-family: Arial, sans-serif;
+			font-size: 9pt;
+			color: #000;
+			line-height: 1.3;
+		}
+
+		.page-header {
+			margin-bottom: 15px;
+		}
+
+		.header-row {
+			display: flex;
+			justify-content: space-between;
+			align-items: flex-start;
+		}
+
+		.company-info {
+			text-align: center;
+			flex: 1;
+		}
+
+		.company-name {
+			font-size: 11pt;
+			font-weight: bold;
+			margin-bottom: 2px;
+		}
+
+		.company-contact {
+			font-size: 8pt;
+			color: #666;
+		}
+
+		.page-number {
+			font-size: 8pt;
+			color: #666;
+			white-space: nowrap;
+			padding-left: 20px;
+			align-self: flex-start;
+		}
+
+		.report-title {
+			text-align: center;
+			margin: 15px 0 5px 0;
+		}
+
+		.title-text {
+			font-size: 12pt;
+			font-weight: bold;
+		}
+
+		.date-range {
+			text-align: center;
+			font-size: 9pt;
+			margin: 5px 0 15px 0;
+		}
+
+		.ledger-table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-top: 15px;
+		}
+
+		.ledger-table thead tr {
+			border-top: 1px solid #000;
+			border-bottom: 1px solid #000;
+		}
+
+		.ledger-table th {
+			padding: 5px 4px;
+			text-align: left;
+			font-weight: normal;
+			font-size: 9pt;
+		}
+
+		.ledger-table td {
+			padding: 3px 4px;
+			font-size: 9pt;
+			vertical-align: top;
+		}
+
+		.ledger-table th.right,
+		.ledger-table td.right {
+			text-align: right;
+		}
+
+		.opening-row {
+			font-weight: bold;
+		}
+
+		.closing-row {
+			font-weight: bold;
+		}
+
+		.closing-row .col-particulars {
+			padding-left: 80px;
+		}
+
+		.subtotal-row {
+			border-top: 1px solid #000;
+		}
+
+		.total-row {
+			border-top: 1px solid #000;
+			border-bottom: 2px double #000;
+		}
+
+		.subtotal-row td,
+		.total-row td {
+			padding-top: 5px;
+			padding-bottom: 5px;
+		}
+
+		/* Column widths matching image */
+		.col-date { width: 10%; }
+		.col-particulars { width: 30%; }
+		.col-vch-type { width: 15%; }
+		.col-vch-no { width: 15%; }
+		.col-debit { width: 15%; }
+		.col-credit { width: 15%; }
+
+		/* Number formatting */
+		.number {
+			font-family: 'Courier New', monospace;
+		}
+	</style>
+</head>
+<body>
+	<div class="page-header">
+		<div class="header-row">
+			<div class="company-info">
+				<div class="company-name">{{ company }}</div>
+				{% if company_contact %}
+				<div class="company-contact">{{ company_contact }}</div>
+				{% endif %}
+			</div>
+			<div class="page-number">Page 1</div>
+		</div>
+	</div>
+
+	<div class="report-title">
+		<div class="title-text">Cash Book</div>
+	</div>
+
+	<div class="date-range">
+		For {{ report_date }}
+	</div>
+
+	<table class="ledger-table">
+		<thead>
+			<tr>
+				<th class="col-date">Date</th>
+				<th class="col-particulars">Particulars</th>
+				<th class="col-vch-type">Vch Type</th>
+				<th class="col-vch-no">Vch No /Excise Inv No</th>
+				<th class="col-debit right">Debit</th>
+				<th class="col-credit right">Credit</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for row in data %}
+			{% set is_opening = row.get('_is_opening', False) %}
+			{% set is_closing = row.get('_is_closing', False) %}
+			{% set is_subtotal = row.get('_is_subtotal', False) %}
+			{% set is_total = row.get('_is_total', False) %}
+
+			<tr class="{% if is_opening %}opening-row{% elif is_closing %}closing-row{% elif is_subtotal %}subtotal-row{% elif is_total %}total-row{% endif %}">
+				<td class="col-date">
+					{% if row.posting_date and row.posting_date != '' %}
+						{{ row.posting_date }}
+					{% endif %}
+				</td>
+				<td class="col-particulars {% if is_closing %}closing-particulars{% endif %}">
+					{{ row.particulars or "" }}
+				</td>
+				<td class="col-vch-type">{{ row.vch_type or "" }}</td>
+				<td class="col-vch-no">{{ row.vch_no or "" }}</td>
+				<td class="col-debit right number">
+					{% if row.debit %}
+						{{ "{:,.0f}".format(row.debit) }}
+					{% endif %}
+				</td>
+				<td class="col-credit right number">
+					{% if row.credit %}
+						{{ "{:,.0f}".format(row.credit) }}
+					{% endif %}
+				</td>
+			</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+</body>
+</html>

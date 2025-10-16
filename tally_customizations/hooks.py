@@ -2,7 +2,7 @@ app_name = "tally_customizations"
 app_title = "Tally Customizations"
 app_publisher = "Your Company"
 app_description = "Tally-style customizations for ERPNext"
-app_email = "your@email.com"
+app_email = "elvisndegwa90@email.com"
 app_license = "mit"
 
 # Apps
