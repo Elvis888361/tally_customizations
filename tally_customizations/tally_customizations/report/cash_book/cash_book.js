@@ -47,6 +47,16 @@ frappe.query_reports["Cash Book"] = {
 		// Use default formatter first
 		value = default_formatter(value, row, column, data);
 
+		// Make voucher number clickable
+		if (column.fieldname === "vch_no" && data && data.voucher_type && data.voucher_no) {
+			// Create a clickable link to the voucher
+			return `<a href="/app/${frappe.router.slug(data.voucher_type)}/${encodeURIComponent(data.voucher_no)}"
+				style="color: #2490ef; text-decoration: underline; cursor: pointer;"
+				onclick="event.preventDefault(); frappe.set_route('Form', '${data.voucher_type}', '${data.voucher_no}');">
+				${value}
+			</a>`;
+		}
+
 		// Check for special rows using underscore properties
 		if (data && data._is_opening) {
 			// Opening balance row - make bold

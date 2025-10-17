@@ -161,9 +161,11 @@ def get_single_account_data(filters):
 			"vch_type": vch_type,
 			"vch_no": gle.get("voucher_no") or "",
 			"debit": debit_amt,
-			"credit": credit_amt
+			"credit": credit_amt,
+			"voucher_type": gle.get("voucher_type", ""),  # Original voucher type for linking
+			"voucher_no": gle.get("voucher_no") or ""  # Voucher number for linking
 		})
-		
+
 		data.append(row)
 
 		# Update totals
@@ -244,9 +246,11 @@ def get_all_accounts_data(filters):
 			"vch_type": vch_type or "",
 			"vch_no": gle.get("voucher_no") or "",
 			"debit": debit_amt,
-			"credit": credit_amt
+			"credit": credit_amt,
+			"voucher_type": gle.get("voucher_type", ""),  # Original voucher type for linking
+			"voucher_no": gle.get("voucher_no") or ""  # Voucher number for linking
 		})
-		
+
 		data.append(row)
 
 		# Update totals

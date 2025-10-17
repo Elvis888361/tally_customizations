@@ -32,7 +32,7 @@ def validate_filters(filters):
 
 
 def get_columns(filters):
-	"""Define columns for Cash Book"""
+	"""Define columns for Banking"""
 	columns = [
 		{
 			"fieldname": "posting_date",
@@ -82,25 +82,25 @@ def get_columns(filters):
 
 
 def get_data(filters):
-	"""Fetch and format data for Cash Book"""
+	"""Fetch and format data for Banking"""
 	data = []
 
-	# Get cash accounts for the company
-	cash_accounts = get_cash_accounts(filters.get("company"))
+	# Get bank accounts for the company
+	bank_accounts = get_bank_accounts(filters.get("company"))
 
-	if not cash_accounts:
-		frappe.msgprint(_("No Cash accounts found for this company"))
+	if not bank_accounts:
+		frappe.msgprint(_("No Bank accounts found for this company"))
 		return data
 
-	# If specific account is selected, use it; otherwise use all cash accounts
+	# If specific account is selected, use it; otherwise use all bank accounts
 	if filters.get("account"):
-		if filters.get("account") in cash_accounts:
+		if filters.get("account") in bank_accounts:
 			account_list = [filters.get("account")]
 		else:
-			frappe.msgprint(_("Selected account is not a Cash account"))
+			frappe.msgprint(_("Selected account is not a Bank account"))
 			return data
 	else:
-		account_list = cash_accounts
+		account_list = bank_accounts
 
 	# Get opening balance
 	opening_balance = get_opening_balance(filters, account_list)
@@ -135,8 +135,8 @@ def get_data(filters):
 
 	# Process each GL entry
 	for gle in gl_entries:
-		# Format particulars with Cr/Dr prefix (Cash Book style)
-		particulars, contra_account = format_cash_book_particulars(gle)
+		# Format particulars with Cr/Dr prefix (Banking style)
+		particulars, contra_account = format_banking_particulars(gle)
 
 		# Map voucher type to Tally-style names
 		vch_type = map_voucher_type(gle.get("voucher_type", ""))
@@ -230,23 +230,23 @@ def get_data(filters):
 	return data
 
 
-def get_cash_accounts(company):
-	"""Get all Cash accounts for the company"""
-	cash_accounts = frappe.db.sql("""
+def get_bank_accounts(company):
+	"""Get all Bank accounts for the company"""
+	bank_accounts = frappe.db.sql("""
 		SELECT name
 		FROM `tabAccount`
 		WHERE company = %(company)s
-			AND account_type = 'Cash'
+			AND account_type = 'Bank'
 			AND is_group = 0
 			AND disabled = 0
 		ORDER BY name
 	""", {"company": company}, as_list=1)
 
-	return [acc[0] for acc in cash_accounts] if cash_accounts else []
+	return [acc[0] for acc in bank_accounts] if bank_accounts else []
 
 
 def get_opening_balance(filters, account_list):
-	"""Calculate opening balance before from_date for cash accounts"""
+	"""Calculate opening balance before from_date for bank accounts"""
 	if not account_list:
 		return 0.0
 
@@ -277,7 +277,7 @@ def get_opening_balance(filters, account_list):
 
 
 def get_gl_entries(filters, account_list):
-	"""Fetch GL entries for cash accounts for the selected period with contra accounts"""
+	"""Fetch GL entries for bank accounts for the selected period with contra accounts"""
 	if not account_list:
 		return []
 
@@ -294,7 +294,7 @@ def get_gl_entries(filters, account_list):
 	for idx, acc in enumerate(account_list):
 		values[f"account_{idx}"] = acc
 
-	# First get all GL entries for cash accounts
+	# First get all GL entries for bank accounts
 	gl_entries = frappe.db.sql(f"""
 		SELECT
 			posting_date,
@@ -325,13 +325,13 @@ def get_gl_entries(filters, account_list):
 			FROM `tabGL Entry`
 			WHERE voucher_type = %(voucher_type)s
 				AND voucher_no = %(voucher_no)s
-				AND account NOT IN %(cash_accounts)s
+				AND account NOT IN %(bank_accounts)s
 				AND is_cancelled = 0
 			LIMIT 1
 		""", {
 			"voucher_type": gle.get("voucher_type"),
 			"voucher_no": gle.get("voucher_no"),
-			"cash_accounts": account_list
+			"bank_accounts": account_list
 		}, as_dict=1)
 
 		# Set the contra_account field
@@ -351,8 +351,8 @@ def get_gl_entries(filters, account_list):
 	return gl_entries
 
 
-def format_cash_book_particulars(gle):
-	"""Format particulars in Cash Book style with Cr/Dr prefix
+def format_banking_particulars(gle):
+	"""Format particulars in Banking style with Cr/Dr prefix
 	Returns: (particulars, contra_account)
 	"""
 	prefix = ""
@@ -393,7 +393,7 @@ def format_cash_book_particulars(gle):
 def map_voucher_type(voucher_type):
 	"""Map ERPNext voucher types to Tally-style names"""
 	mapping = {
-		"Sales Invoice": "Cash Sales",
+		"Sales Invoice": "Bank Sales",
 		"Purchase Invoice": "Purchase",
 		"Payment Entry": "Payment",
 		"Journal Entry": "Receipt",
@@ -409,7 +409,7 @@ def map_voucher_type(voucher_type):
 
 @frappe.whitelist()
 def get_print_html(filters, data, company, company_address, company_contact):
-	"""Generate HTML for printing the cash book"""
+	"""Generate HTML for printing the banking report"""
 	import json
 
 	# Parse JSON strings if needed
@@ -421,7 +421,7 @@ def get_print_html(filters, data, company, company_address, company_contact):
 	# Get the template path
 	template_path = os.path.join(
 		os.path.dirname(__file__),
-		"cash_book_print.html"
+		"banking_print.html"
 	)
 
 	# Read template content
@@ -442,7 +442,7 @@ def get_print_html(filters, data, company, company_address, company_contact):
 		to_date = getdate(to_date)
 
 	context = {
-		"title": f"Cash Book - {company}",
+		"title": f"Banking - {company}",
 		"company": company,
 		"company_address": company_address,
 		"company_contact": company_contact,
