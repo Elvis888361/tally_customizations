@@ -85,11 +85,6 @@ def get_data(filters):
 	"""Fetch and format data for Banking"""
 	data = []
 
-	# Check if party type and party are selected
-	if not (filters.get("party_type") and filters.get("party")):
-		frappe.msgprint(_("Please select Party Type and Party"))
-		return data
-
 	# Get opening balance
 	opening_balance = get_opening_balance(filters)
 
