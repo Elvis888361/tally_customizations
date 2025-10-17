@@ -48,7 +48,7 @@ def get_columns(filters):
 		},
 		{
 			"fieldname": "account",
-			"label": _("Account"),
+			"label": _("Paid To/From"),
 			"fieldtype": "Data",
 			"width": 200
 		},
