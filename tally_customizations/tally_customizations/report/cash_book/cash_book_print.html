@@ -128,8 +128,9 @@
 		}
 
 		/* Column widths matching image */
+		.col-sr-no { width: 5%; }
 		.col-date { width: 10%; }
-		.col-particulars { width: 30%; }
+		.col-particulars { width: 25%; }
 		.col-vch-type { width: 15%; }
 		.col-vch-no { width: 15%; }
 		.col-debit { width: 15%; }
@@ -165,6 +166,7 @@
 	<table class="ledger-table">
 		<thead>
 			<tr>
+				<th class="col-sr-no">Sr No</th>
 				<th class="col-date">Date</th>
 				<th class="col-particulars">Particulars</th>
 				<th class="col-vch-type">Vch Type</th>
@@ -174,13 +176,23 @@
 			</tr>
 		</thead>
 		<tbody>
+			{% set ns = namespace(counter=0) %}
 			{% for row in data %}
 			{% set is_opening = row.get('_is_opening', False) %}
 			{% set is_closing = row.get('_is_closing', False) %}
 			{% set is_subtotal = row.get('_is_subtotal', False) %}
 			{% set is_total = row.get('_is_total', False) %}
+			{% set is_regular_row = not (is_opening or is_closing or is_subtotal or is_total) %}
+			{% if is_regular_row %}
+				{% set ns.counter = ns.counter + 1 %}
+			{% endif %}
 
 			<tr class="{% if is_opening %}opening-row{% elif is_closing %}closing-row{% elif is_subtotal %}subtotal-row{% elif is_total %}total-row{% endif %}">
+				<td class="col-sr-no">
+					{% if is_regular_row %}
+						{{ ns.counter }}
+					{% endif %}
+				</td>
 				<td class="col-date">
 					{% if row.posting_date and row.posting_date != '' %}
 						{{ row.posting_date }}
