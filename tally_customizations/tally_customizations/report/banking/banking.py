@@ -112,9 +112,9 @@ def get_data(filters):
 	# Get GL entries for the period
 	gl_entries = get_gl_entries(filters)
 
-	# Track running totals
-	total_debit = opening_balance if opening_balance > 0 else 0.0
-	total_credit = abs(opening_balance) if opening_balance < 0 else 0.0
+	# Track running totals - separate period from opening
+	period_debit = 0.0
+	period_credit = 0.0
 
 	# Process each GL entry
 	for gle in gl_entries:
@@ -152,26 +152,28 @@ def get_data(filters):
 
 		data.append(row)
 
-		# Update totals
-		total_debit += debit_amt
-		total_credit += credit_amt
+		# Update period totals
+		period_debit += debit_amt
+		period_credit += credit_amt
 
-	# Add subtotal row (without closing balance) if there are entries
+	# Add period subtotal row (excluding opening balance) if there are entries
 	if data:
 		subtotal_row = _dict({
 			"posting_date": "",
-			"particulars": "",
+			"particulars": "Period Total",
 			"account": "",
 			"vch_type": "",
 			"vch_no": "",
-			"debit": total_debit,
-			"credit": total_credit,
+			"debit": period_debit,
+			"credit": period_credit,
 			"_is_subtotal": True
 		})
 		data.append(subtotal_row)
 
-	# Calculate closing balance
-	closing_balance = total_debit - total_credit
+	# Calculate closing balance: Opening + Period Debit - Period Credit
+	opening_debit = opening_balance if opening_balance > 0 else 0.0
+	opening_credit = abs(opening_balance) if opening_balance < 0 else 0.0
+	closing_balance = opening_balance + period_debit - period_credit
 
 	# Add closing balance row with appropriate Dr/Cr prefix
 	if closing_balance > 0:
@@ -191,7 +193,11 @@ def get_data(filters):
 	})
 	data.append(closing_row)
 
-	# Update totals to balance
+	# Calculate final totals for balancing (opening + period + closing balance on opposite side)
+	total_debit = opening_debit + period_debit
+	total_credit = opening_credit + period_credit
+
+	# Add closing balance to opposite side to balance
 	if closing_balance < 0:
 		total_debit += abs(closing_balance)
 	else:
