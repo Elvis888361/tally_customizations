@@ -26,25 +26,19 @@ frappe.query_reports["Banking"] = {
 			"reqd": 1
 		},
 		{
-			"fieldname": "party_type",
-			"label": __("Party Type"),
-			"fieldtype": "Autocomplete",
-			"options": ["Customer", "Supplier"],
-			"on_change": function() {
-				frappe.query_report.set_filter_value('party', []);
-			}
-		},
-		{
-			"fieldname": "party",
-			"label": __("Party"),
-			"fieldtype": "MultiSelectList",
-			"get_data": function(txt) {
-				if (!frappe.query_report.filters) return;
-
-				let party_type = frappe.query_report.get_filter_value('party_type');
-				if (!party_type) return;
-
-				return frappe.db.get_link_options(party_type, txt);
+			"fieldname": "account",
+			"label": __("Bank Account"),
+			"fieldtype": "Link",
+			"options": "Account",
+			"get_query": function() {
+				let company = frappe.query_report.get_filter_value('company');
+				return {
+					"filters": {
+						"company": company,
+						"account_type": "Bank",
+						"is_group": 0
+					}
+				};
 			}
 		}
 	],
@@ -101,27 +95,6 @@ frappe.query_reports["Banking"] = {
 				return;
 			}
 
-			// Get party name for display
-			let party_name = "";
-
-			// Handle party filter (which is now an array from MultiSelectList)
-			if (filters.party && Array.isArray(filters.party) && filters.party.length > 0) {
-				party_name = filters.party.join(", ");
-			} else if (filters.party && typeof filters.party === 'string') {
-				party_name = filters.party;
-			}
-
-			if (!party_name) {
-				party_name = "All Parties";
-			}
-
-			let ledger_type = "Banking";
-			if (filters.party_type === "Customer") {
-				ledger_type = "Customer Banking";
-			} else if (filters.party_type === "Supplier") {
-				ledger_type = "Supplier Banking";
-			}
-
 			// Get company details
 			frappe.call({
 				method: "frappe.client.get",
@@ -155,9 +128,7 @@ frappe.query_reports["Banking"] = {
 								data: data,
 								company: company,
 								company_address: company_address,
-								company_contact: company_contact,
-								party_name: party_name,
-								ledger_type: ledger_type
+								company_contact: company_contact
 							},
 							callback: function(response) {
 								if (response.message) {

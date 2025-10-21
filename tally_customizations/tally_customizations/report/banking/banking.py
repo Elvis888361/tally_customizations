@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import _, _dict
-from frappe.utils import flt, getdate, fmt_money, get_datetime_str
+from frappe.utils import flt, getdate
 import os
 
 
@@ -13,7 +13,7 @@ def execute(filters=None):
 		return [], []
 
 	validate_filters(filters)
-	columns = get_columns(filters)
+	columns = get_columns()
 	data = get_data(filters)
 
 	return columns, data
@@ -31,7 +31,7 @@ def validate_filters(filters):
 		frappe.throw(_("Please select To Date"))
 
 
-def get_columns(filters):
+def get_columns():
 	"""Define columns for Banking"""
 	columns = [
 		{
@@ -85,8 +85,25 @@ def get_data(filters):
 	"""Fetch and format data for Banking"""
 	data = []
 
+	# Get bank accounts for the company
+	bank_accounts = get_bank_accounts(filters.get("company"))
+
+	if not bank_accounts:
+		frappe.msgprint(_("No Bank accounts found for this company"))
+		return data
+
+	# If specific account is selected, use it; otherwise use all bank accounts
+	if filters.get("account"):
+		if filters.get("account") in bank_accounts:
+			account_list = [filters.get("account")]
+		else:
+			frappe.msgprint(_("Selected account is not a Bank account"))
+			return data
+	else:
+		account_list = bank_accounts
+
 	# Get opening balance
-	opening_balance = get_opening_balance(filters)
+	opening_balance = get_opening_balance(filters, account_list)
 
 	# Format from_date for display
 	from_date_str = filters.get("from_date")
@@ -110,7 +127,7 @@ def get_data(filters):
 		data.append(opening_row)
 
 	# Get GL entries for the period
-	gl_entries = get_gl_entries(filters)
+	gl_entries = get_gl_entries(filters, account_list)
 
 	# Track running totals - separate period from opening
 	period_debit = 0.0
@@ -219,44 +236,44 @@ def get_data(filters):
 	return data
 
 
-def get_opening_balance(filters):
-	"""Calculate opening balance before from_date for party"""
-	conditions = []
+def get_bank_accounts(company):
+	"""Get all Bank accounts for the company"""
+	bank_accounts = frappe.db.sql("""
+		SELECT name
+		FROM `tabAccount`
+		WHERE company = %(company)s
+			AND account_type = 'Bank'
+			AND is_group = 0
+			AND disabled = 0
+		ORDER BY name
+	""", {"company": company}, as_list=1)
+
+	return [acc[0] for acc in bank_accounts] if bank_accounts else []
+
+
+def get_opening_balance(filters, account_list):
+	"""Calculate opening balance before from_date for bank accounts"""
+	if not account_list:
+		return 0.0
+
+	# Create placeholders for accounts
+	account_placeholders = ', '.join([f"%(account_{idx})s" for idx in range(len(account_list))])
+
 	values = {
 		"company": filters.get("company"),
 		"from_date": filters.get("from_date")
 	}
 
-	# Add party filters
-	if filters.get("party_type") and filters.get("party"):
-		party = filters.get("party")
-		if isinstance(party, (list, tuple)) and len(party) > 0:
-			# For multiple parties, calculate combined opening balance
-			party_placeholders = ', '.join([f"%(party_{idx})s" for idx in range(len(party))])
-			conditions.append(f"party_type = %(party_type)s AND party IN ({party_placeholders})")
-			values["party_type"] = filters.get("party_type")
-			for idx, p in enumerate(party):
-				values[f"party_{idx}"] = p
-		else:
-			# Single party
-			if isinstance(party, list):
-				party = party[0] if party else None
-			if party:
-				conditions.append("party_type = %(party_type)s AND party = %(party)s")
-				values["party_type"] = filters.get("party_type")
-				values["party"] = party
-
-	if not conditions:
-		return 0.0
-
-	where_clause = " AND ".join(conditions)
+	# Add account values
+	for idx, acc in enumerate(account_list):
+		values[f"account_{idx}"] = acc
 
 	opening = frappe.db.sql(f"""
 		SELECT
 			SUM(debit) - SUM(credit) as balance
 		FROM `tabGL Entry`
 		WHERE
-			{where_clause}
+			account IN ({account_placeholders})
 			AND company = %(company)s
 			AND posting_date < %(from_date)s
 			AND is_cancelled = 0
@@ -265,34 +282,25 @@ def get_opening_balance(filters):
 	return flt(opening[0].balance) if opening and opening[0].balance else 0.0
 
 
-def get_gl_entries(filters):
-	"""Fetch GL entries for the selected period with party filters"""
-	conditions = []
-	values = dict(filters)
+def get_gl_entries(filters, account_list):
+	"""Fetch GL entries for bank accounts for the selected period with contra accounts"""
+	if not account_list:
+		return []
 
-	# Add party filters
-	if filters.get("party_type") and filters.get("party"):
-		# Handle party as list (MultiSelectList) or single value
-		party = filters.get("party")
-		if isinstance(party, (list, tuple)) and len(party) > 0:
-			# Use IN clause for multiple parties
-			party_placeholders = ', '.join([f"%(party_{idx})s" for idx in range(len(party))])
-			conditions.append(f"party_type = %(party_type)s AND party IN ({party_placeholders})")
-			# Add party values to SQL parameters
-			for idx, p in enumerate(party):
-				values[f"party_{idx}"] = p
-		else:
-			# Single party or string
-			if isinstance(party, list):
-				party = party[0] if party else None
-			if party:
-				conditions.append("party_type = %(party_type)s AND party = %(party)s")
-				values["party"] = party
+	# Create placeholders for accounts
+	account_placeholders = ', '.join([f"%(account_{idx})s" for idx in range(len(account_list))])
 
-	where_clause = ""
-	if conditions:
-		where_clause = " AND " + " AND ".join(conditions)
+	values = {
+		"company": filters.get("company"),
+		"from_date": filters.get("from_date"),
+		"to_date": filters.get("to_date")
+	}
 
+	# Add account values
+	for idx, acc in enumerate(account_list):
+		values[f"account_{idx}"] = acc
+
+	# First get all GL entries for bank accounts
 	gl_entries = frappe.db.sql(f"""
 		SELECT
 			posting_date,
@@ -307,13 +315,44 @@ def get_gl_entries(filters):
 			remarks
 		FROM `tabGL Entry`
 		WHERE
-			company = %(company)s
+			account IN ({account_placeholders})
+			AND company = %(company)s
 			AND posting_date >= %(from_date)s
 			AND posting_date <= %(to_date)s
 			AND is_cancelled = 0
-			{where_clause}
 		ORDER BY posting_date, account, creation
 	""", values, as_dict=1)
+
+	# Now get the actual contra accounts for each GL entry
+	for gle in gl_entries:
+		# Query the contra GL entries from the same voucher
+		contra_entries = frappe.db.sql("""
+			SELECT account
+			FROM `tabGL Entry`
+			WHERE voucher_type = %(voucher_type)s
+				AND voucher_no = %(voucher_no)s
+				AND account NOT IN %(bank_accounts)s
+				AND is_cancelled = 0
+			LIMIT 1
+		""", {
+			"voucher_type": gle.get("voucher_type"),
+			"voucher_no": gle.get("voucher_no"),
+			"bank_accounts": account_list
+		}, as_dict=1)
+
+		# Set the contra_account field
+		if contra_entries and len(contra_entries) > 0:
+			gle["contra_account"] = contra_entries[0].get("account")
+		else:
+			# Fallback to against field if no contra entry found
+			against = gle.get("against", "")
+			if against:
+				# Clean up the against field (remove party names, take first account)
+				if "," in against:
+					against = against.split(",")[0].strip()
+				gle["contra_account"] = against
+			else:
+				gle["contra_account"] = ""
 
 	return gl_entries
 
@@ -375,7 +414,7 @@ def map_voucher_type(voucher_type):
 
 
 @frappe.whitelist()
-def get_print_html(filters, data, company, company_address, company_contact, party_name=None, ledger_type=None):
+def get_print_html(filters, data, company, company_address, company_contact):
 	"""Generate HTML for printing the banking report"""
 	import json
 
@@ -408,16 +447,11 @@ def get_print_html(filters, data, company, company_address, company_contact, par
 	if isinstance(to_date, str):
 		to_date = getdate(to_date)
 
-	# Use party_name if provided, otherwise use default
-	title = f"{ledger_type or 'Banking'} - {party_name or company}"
-
 	context = {
-		"title": title,
+		"title": f"Banking - {company}",
 		"company": company,
 		"company_address": company_address,
 		"company_contact": company_contact,
-		"party_name": party_name or "All Parties",
-		"ledger_type": ledger_type or "Banking",
 		"from_date": getdate(filters.get("from_date")).strftime("%-d-%b-%Y"),
 		"to_date": to_date.strftime("%-d-%b-%Y"),
 		"report_date": to_date.strftime("%-d-%b-%Y"),
