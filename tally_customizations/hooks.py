@@ -90,7 +90,8 @@ fixtures = [
 				"name",
 				"in",
 				[
-					"Tally Invoice Print"
+					"Tally Invoice Print",
+					"Detailed Invoice Print"
 				]
 			]
 		]
