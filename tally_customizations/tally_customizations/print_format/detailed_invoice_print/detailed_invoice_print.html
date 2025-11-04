@@ -314,7 +314,13 @@ body {
 
             <!-- Invoice Row -->
             <tr>
-                <td>{{ frappe.utils.formatdate(doc.posting_date, "dd/MM/yyyy") }} {{ (doc.posting_time or "09:16")[:5] }} AM</td>
+                {% set invoice_time = doc.posting_time %}
+                {% if invoice_time.__class__.__name__ == 'timedelta' %}
+                    {% set invoice_time = (frappe.utils.now_datetime().replace(hour=0, minute=0, second=0, microsecond=0) + invoice_time).strftime("%H:%M") %}
+                {% else %}
+                    {% set invoice_time = str(invoice_time or "09:16").split(".")[0].rsplit(":", 1)[0] %}
+                {% endif %}
+                <td>{{ frappe.utils.formatdate(doc.posting_date, "dd/MM/yyyy") }} {{ invoice_time }} AM</td>
                 <td>{{ doc.name.split("-")[-1] if "-" in doc.name else doc.name }}</td>
                 <td>Invoice</td>
                 <td>{{ doc.set_warehouse or "4S Spare Parts" }}</td>
@@ -364,8 +370,14 @@ body {
             {% set payments = frappe.get_all("Payment Entry Reference", filters={"reference_name": doc.name, "docstatus": 1}, fields=["parent"]) %}
             {% for payment_ref in payments %}
                 {% set payment = frappe.get_doc("Payment Entry", payment_ref.parent) %}
+                {% set payment_time = payment.posting_time %}
+                {% if payment_time.__class__.__name__ == 'timedelta' %}
+                    {% set payment_time = (frappe.utils.now_datetime().replace(hour=0, minute=0, second=0, microsecond=0) + payment_time).strftime("%H:%M") %}
+                {% else %}
+                    {% set payment_time = str(payment_time or "10:13").split(".")[0].rsplit(":", 1)[0] %}
+                {% endif %}
                 <tr class="transaction-row-white">
-                    <td>{{ frappe.utils.formatdate(payment.posting_date, "dd/MM/yyyy") }} {{ (payment.posting_time or "10:13")[:5] }} AM</td>
+                    <td>{{ frappe.utils.formatdate(payment.posting_date, "dd/MM/yyyy") }} {{ payment_time }} AM</td>
                     <td>{{ payment.name.split("-")[-1] if "-" in payment.name else payment.name }}</td>
                     <td>Payment</td>
                     <td></td>
