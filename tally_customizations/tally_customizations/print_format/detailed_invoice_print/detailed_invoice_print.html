@@ -20,31 +20,32 @@ body {
     margin: 0 auto;
 }
 
-/* Company Header Table */
-.company-header-table {
-    width: 100%;
-    border-collapse: collapse;
+/* Company Header */
+.company-header {
+    text-align: right;
     margin-bottom: 30px;
 }
 
 .company-name {
     font-weight: bold;
     font-size: 14pt;
-    text-align: right;
+    margin-bottom: 2px;
 }
 
 .company-address {
     font-size: 9pt;
     line-height: 1.4;
-    text-align: right;
-    padding-top: 2px;
 }
 
-/* Customer Section Table */
-.customer-section-table {
-    width: 100%;
-    border-collapse: collapse;
+/* Customer Section */
+.customer-section {
+    display: flex;
+    justify-content: space-between;
     margin-bottom: 20px;
+}
+
+.customer-box {
+    width: 30%;
 }
 
 .customer-label {
@@ -53,11 +54,11 @@ body {
     padding: 8px 15px;
     font-weight: bold;
     font-size: 9pt;
+    margin-bottom: 10px;
 }
 
 .customer-details {
-    padding: 10px 15px;
-    vertical-align: top;
+    padding-left: 15px;
 }
 
 .customer-name-main {
@@ -76,19 +77,26 @@ body {
     color: #333;
 }
 
-/* Account Summary */
+/* Account Summary Box */
+.summary-box {
+    width: 65%;
+}
+
 .summary-header {
     background-color: #4a7ba7;
     color: white;
     padding: 8px 15px;
     font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     font-size: 9pt;
+    margin-bottom: 0;
 }
 
 .summary-dates {
     font-size: 8.5pt;
     font-weight: normal;
-    float: right;
 }
 
 .summary-table {
@@ -210,84 +218,63 @@ body {
 <body>
 <div class="statement-container">
     <!-- Company Header -->
-    <table class="company-header-table">
-        <tr>
-            <td class="company-name">
-                {{ doc.company or "4S INDUSTRES LTD" }}
-            </td>
-        </tr>
-        <tr>
-            <td class="company-address">
-                {% set company_doc = frappe.get_doc("Company", doc.company) %}
-                , {{ company_doc.city or "Kampala" }}, {{ company_doc.country or "Central Uganda" }}, {{ company_doc.pincode or "126876" }}
-            </td>
-        </tr>
-    </table>
+    <div class="company-header">
+        <div class="company-name">{{ doc.company or "4S INDUSTRES LTD" }}</div>
+        <div class="company-address">
+            {% set company_doc = frappe.get_doc("Company", doc.company) %}
+            , {{ company_doc.city or "Kampala" }}, {{ company_doc.country or "Central Uganda" }}, {{ company_doc.pincode or "126876" }}
+        </div>
+    </div>
 
     <!-- Customer and Summary Section -->
-    <table class="customer-section-table">
-        <tr>
-            <!-- Customer Box -->
-            <td style="width: 30%; vertical-align: top;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td class="customer-label">To:</td>
-                    </tr>
-                    <tr>
-                        <td class="customer-details">
-                            <div class="customer-name-main">{{ (doc.customer_name or doc.customer)|upper }}</div>
-                            <div class="customer-name-repeat">{{ doc.customer_name or doc.customer }}</div>
-                            {% if doc.contact_mobile %}
-                            <div class="customer-contact">Mobile: {{ doc.contact_mobile }}</div>
-                            {% elif doc.contact_person %}
-                                {% set contact_mobile = frappe.db.get_value("Contact", doc.contact_person, "mobile_no") %}
-                                {% if contact_mobile %}
-                                <div class="customer-contact">Mobile: {{ contact_mobile }}</div>
-                                {% endif %}
-                            {% endif %}
-                        </td>
-                    </tr>
-                </table>
-            </td>
+    <div class="customer-section">
+        <!-- Customer Box -->
+        <div class="customer-box">
+            <div class="customer-label">To:</div>
+            <div class="customer-details">
+                <div class="customer-name-main">{{ (doc.customer_name or doc.customer)|upper }}</div>
+                <div class="customer-name-repeat">{{ doc.customer_name or doc.customer }}</div>
+                {% if doc.contact_mobile %}
+                <div class="customer-contact">Mobile: {{ doc.contact_mobile }}</div>
+                {% elif doc.contact_person %}
+                    {% set contact_mobile = frappe.db.get_value("Contact", doc.contact_person, "mobile_no") %}
+                    {% if contact_mobile %}
+                    <div class="customer-contact">Mobile: {{ contact_mobile }}</div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
 
-            <!-- Spacer -->
-            <td style="width: 5%;"></td>
-
-            <!-- Account Summary Box -->
-            <td style="width: 65%; vertical-align: top;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td class="summary-header" colspan="2">
-                            Account Summary
-                            <span class="summary-dates">01/01/2024 To 31/12/2024</span>
-                        </td>
-                    </tr>
-                </table>
-                <table class="summary-table">
-                    <tr>
-                        <td class="summary-label">Opening Balance</td>
-                        <td class="summary-value">{{ doc.currency }} 0</td>
-                    </tr>
-                    <tr>
-                        <td class="summary-label">Total invoice</td>
-                        <td class="summary-value">{{ doc.currency }} {{ "{:,.0f}".format(doc.grand_total) }}</td>
-                    </tr>
-                    <tr>
-                        <td class="summary-label">Paid Amount</td>
-                        <td class="summary-value">{{ doc.currency }} {{ "{:,.0f}".format(doc.paid_amount or 0) }}</td>
-                    </tr>
-                    <tr>
-                        <td class="summary-label">Credit</td>
-                        <td class="summary-value">{{ doc.currency }} {{ "{:,.0f}".format(doc.grand_total - (doc.paid_amount or 0)) }}</td>
-                    </tr>
-                    <tr>
-                        <td class="summary-label">Balance due</td>
-                        <td class="summary-value">{{ doc.currency }} {{ "{:,.0f}".format(doc.outstanding_amount) }}</td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
+        <!-- Account Summary Box -->
+        <div class="summary-box">
+            <div class="summary-header">
+                <span>Account Summary</span>
+                <span class="summary-dates">01/01/2024 To 31/12/2024</span>
+            </div>
+            <table class="summary-table">
+                <tr>
+                    <td class="summary-label">Opening Balance</td>
+                    <td class="summary-value">{{ doc.currency }} 0</td>
+                </tr>
+                <tr>
+                    <td class="summary-label">Total invoice</td>
+                    <td class="summary-value">{{ doc.currency }} {{ "{:,.0f}".format(doc.grand_total) }}</td>
+                </tr>
+                <tr>
+                    <td class="summary-label">Paid Amount</td>
+                    <td class="summary-value">{{ doc.currency }} {{ "{:,.0f}".format(doc.paid_amount or 0) }}</td>
+                </tr>
+                <tr>
+                    <td class="summary-label">Credit</td>
+                    <td class="summary-value">{{ doc.currency }} {{ "{:,.0f}".format(doc.grand_total - (doc.paid_amount or 0)) }}</td>
+                </tr>
+                <tr>
+                    <td class="summary-label">Balance due</td>
+                    <td class="summary-value">{{ doc.currency }} {{ "{:,.0f}".format(doc.outstanding_amount) }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
 
     <!-- Period Header -->
     <div class="period-header">
