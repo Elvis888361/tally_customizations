@@ -173,15 +173,10 @@ def get_data(filters):
 		period_debit += debit_amt
 		period_credit += credit_amt
 
-	# Recalculate period totals from actual data to ensure accuracy
-	# This fixes a potential issue where period_debit/period_credit might get modified
-	period_debit_final = flt(0)
-	period_credit_final = flt(0)
-	for row in data:
-		# Skip opening balance row, only sum actual transactions
-		if not row.get("_is_opening"):
-			period_debit_final += flt(row.get("debit", 0))
-			period_credit_final += flt(row.get("credit", 0))
+	# Store the accurate period totals directly
+	# Use the accumulated values from the loop above
+	total_period_debit = flt(period_debit)
+	total_period_credit = flt(period_credit)
 
 	# Add period subtotal row (excluding opening balance) if there are entries
 	if data:
@@ -191,16 +186,19 @@ def get_data(filters):
 			"account": "",
 			"vch_type": "",
 			"vch_no": "",
-			"debit": period_debit_final,
-			"credit": period_credit_final,
+			"debit": total_period_debit,
+			"credit": total_period_credit,
 			"_is_subtotal": True
 		})
 		data.append(subtotal_row)
 
 	# Calculate closing balance: Opening + Period Debit - Period Credit
-	opening_debit = opening_balance if opening_balance > 0 else 0.0
-	opening_credit = abs(opening_balance) if opening_balance < 0 else 0.0
-	closing_balance = opening_balance + period_debit_final - period_credit_final
+	# Use explicit arithmetic to ensure no precision loss
+	opening_debit = flt(opening_balance) if opening_balance > 0 else 0.0
+	opening_credit = flt(abs(opening_balance)) if opening_balance < 0 else 0.0
+
+	# Calculate closing with explicit types
+	closing_balance = flt(opening_balance) + flt(total_period_debit) - flt(total_period_credit)
 
 	# Add closing balance row with appropriate Dr/Cr prefix
 	if closing_balance > 0:
@@ -221,8 +219,8 @@ def get_data(filters):
 	data.append(closing_row)
 
 	# Calculate final totals for balancing (opening + period + closing balance on opposite side)
-	total_debit = opening_debit + period_debit_final
-	total_credit = opening_credit + period_credit_final
+	total_debit = opening_debit + total_period_debit
+	total_credit = opening_credit + total_period_credit
 
 	# Add closing balance to opposite side to balance
 	if closing_balance < 0:
