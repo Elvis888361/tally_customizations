@@ -150,9 +150,9 @@ def get_data(filters):
 		else:
 			posting_date_str = ""
 
-		# Get amounts
-		debit_amt = flt(gle.get("debit", 0))
-		credit_amt = flt(gle.get("credit", 0))
+		# Get amounts with explicit precision to prevent multiplication
+		debit_amt = flt(gle.get("debit", 0), precision=2)
+		credit_amt = flt(gle.get("credit", 0), precision=2)
 
 		# Create row as dict
 		row = _dict({
@@ -173,10 +173,10 @@ def get_data(filters):
 		period_debit += debit_amt
 		period_credit += credit_amt
 
-	# Store the accurate period totals directly
+	# Store the accurate period totals directly with explicit precision
 	# Use the accumulated values from the loop above
-	total_period_debit = flt(period_debit)
-	total_period_credit = flt(period_credit)
+	total_period_debit = flt(period_debit, precision=2)
+	total_period_credit = flt(period_credit, precision=2)
 
 	# Add period subtotal row (excluding opening balance) if there are entries
 	if data:
@@ -193,12 +193,12 @@ def get_data(filters):
 		data.append(subtotal_row)
 
 	# Calculate closing balance: Opening + Period Debit - Period Credit
-	# Use explicit arithmetic to ensure no precision loss
-	opening_debit = flt(opening_balance) if opening_balance > 0 else 0.0
-	opening_credit = flt(abs(opening_balance)) if opening_balance < 0 else 0.0
+	# Use explicit arithmetic with precision to prevent multiplication
+	opening_debit = flt(opening_balance, precision=2) if opening_balance > 0 else 0.0
+	opening_credit = flt(abs(opening_balance), precision=2) if opening_balance < 0 else 0.0
 
-	# Calculate closing with explicit types
-	closing_balance = flt(opening_balance) + flt(total_period_debit) - flt(total_period_credit)
+	# Calculate closing with explicit types and precision
+	closing_balance = flt(opening_balance + total_period_debit - total_period_credit, precision=2)
 
 	# Add closing balance row with appropriate Dr/Cr prefix
 	if closing_balance > 0:
@@ -287,7 +287,13 @@ def get_opening_balance(filters, account_list):
 			AND is_cancelled = 0
 	""", values, as_dict=1)
 
-	return flt(opening[0].balance) if opening and opening[0].balance else 0.0
+	# Get the opening balance and ensure no multiplication occurs
+	opening_bal = 0.0
+	if opening and opening[0].balance is not None:
+		# Use precision=2 to ensure proper decimal handling
+		opening_bal = flt(opening[0].balance, precision=2)
+
+	return opening_bal
 
 
 def get_gl_entries(filters, account_list):
