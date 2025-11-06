@@ -173,6 +173,16 @@ def get_data(filters):
 		period_debit += debit_amt
 		period_credit += credit_amt
 
+	# Recalculate period totals from actual data to ensure accuracy
+	# This fixes a potential issue where period_debit/period_credit might get modified
+	period_debit_final = flt(0)
+	period_credit_final = flt(0)
+	for row in data:
+		# Skip opening balance row, only sum actual transactions
+		if not row.get("_is_opening"):
+			period_debit_final += flt(row.get("debit", 0))
+			period_credit_final += flt(row.get("credit", 0))
+
 	# Add period subtotal row (excluding opening balance) if there are entries
 	if data:
 		subtotal_row = _dict({
@@ -181,8 +191,8 @@ def get_data(filters):
 			"account": "",
 			"vch_type": "",
 			"vch_no": "",
-			"debit": period_debit,
-			"credit": period_credit,
+			"debit": period_debit_final,
+			"credit": period_credit_final,
 			"_is_subtotal": True
 		})
 		data.append(subtotal_row)
@@ -190,7 +200,7 @@ def get_data(filters):
 	# Calculate closing balance: Opening + Period Debit - Period Credit
 	opening_debit = opening_balance if opening_balance > 0 else 0.0
 	opening_credit = abs(opening_balance) if opening_balance < 0 else 0.0
-	closing_balance = opening_balance + period_debit - period_credit
+	closing_balance = opening_balance + period_debit_final - period_credit_final
 
 	# Add closing balance row with appropriate Dr/Cr prefix
 	if closing_balance > 0:
@@ -211,8 +221,8 @@ def get_data(filters):
 	data.append(closing_row)
 
 	# Calculate final totals for balancing (opening + period + closing balance on opposite side)
-	total_debit = opening_debit + period_debit
-	total_credit = opening_credit + period_credit
+	total_debit = opening_debit + period_debit_final
+	total_credit = opening_credit + period_credit_final
 
 	# Add closing balance to opposite side to balance
 	if closing_balance < 0:
