@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sudo lsof:*)",
+      "Bash(lsof:*)",
+      "Bash(ss:*)",
+      "Bash(fuser:*)",
+      "Bash(kill:*)",
+      "Bash(sudo kill:*)",
+      "Bash(bench:*)",
+      "Read(//home/frappe/frappe-bench/**)",
+      "Bash(cat:*)",
+      "Bash(tree:*)",
+      "Bash(python3:*)",
+      "WebSearch",
+      "WebFetch(domain:www.financestrategists.com)",
+      "Bash(mkdir:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
