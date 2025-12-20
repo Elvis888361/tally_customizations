@@ -13,11 +13,11 @@
  "modified": "2024-12-19 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Tally Customizations",
- "name": "Item Export",
+ "name": "Item Prices Report",
  "owner": "Administrator",
  "prepared_report": 0,
  "ref_doctype": "Item",
- "report_name": "Item Export",
+ "report_name": "Item Prices Report",
  "report_type": "Script Report",
  "roles": [
   {

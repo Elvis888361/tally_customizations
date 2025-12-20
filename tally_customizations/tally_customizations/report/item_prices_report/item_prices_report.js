@@ -1,7 +1,7 @@
 // Copyright (c) 2024, Tally Customizations and contributors
 // For license information, please see license.txt
 
-frappe.query_reports["Item Export"] = {
+frappe.query_reports["Item Prices Report"] = {
 	"filters": [
 		{
 			"fieldname": "item_code",
