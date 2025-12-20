@@ -41,11 +41,11 @@ def get_columns(filters):
 		}
 	]
 
-	# Get buying price lists (only those that are exclusively buying or user selected)
+	# Get buying price lists
 	buying_price_lists = get_buying_price_lists(filters)
 	for pl in buying_price_lists:
 		currency = get_price_list_currency(pl)
-		fieldname = frappe.scrub(pl)  # Convert to snake_case for unique fieldname
+		fieldname = frappe.scrub(pl)
 		columns.append({
 			"label": f"{pl} ({currency})",
 			"fieldname": f"buying_{fieldname}",
@@ -54,7 +54,7 @@ def get_columns(filters):
 			"width": 150
 		})
 
-	# Get selling price lists (only those that are exclusively selling or user selected)
+	# Get selling price lists
 	selling_price_lists = get_selling_price_lists(filters)
 	for pl in selling_price_lists:
 		currency = get_price_list_currency(pl)
@@ -77,30 +77,30 @@ def get_price_list_currency(price_list):
 
 
 def get_buying_price_lists(filters):
-	"""Get buying price lists - only those marked for buying and NOT for selling (exclusive buying)"""
+	"""Get buying price lists"""
 	if filters.get("buying_price_list"):
 		pl = filters.get("buying_price_list")
 		return [pl] if isinstance(pl, str) else list(pl)
 
-	# Get price lists that are ONLY for buying (buying=1 and selling=0)
+	# Get all price lists marked for buying
 	return frappe.get_all(
 		"Price List",
-		filters={"buying": 1, "selling": 0, "enabled": 1},
+		filters={"buying": 1, "enabled": 1},
 		pluck="name",
 		order_by="name"
 	)
 
 
 def get_selling_price_lists(filters):
-	"""Get selling price lists - only those marked for selling and NOT for buying (exclusive selling)"""
+	"""Get selling price lists"""
 	if filters.get("selling_price_list"):
 		pl = filters.get("selling_price_list")
 		return [pl] if isinstance(pl, str) else list(pl)
 
-	# Get price lists that are ONLY for selling (selling=1 and buying=0)
+	# Get all price lists marked for selling
 	return frappe.get_all(
 		"Price List",
-		filters={"selling": 1, "buying": 0, "enabled": 1},
+		filters={"selling": 1, "enabled": 1},
 		pluck="name",
 		order_by="name"
 	)
@@ -130,13 +130,21 @@ def get_data(filters):
 		order_by="name"
 	)
 
+	if not items:
+		return data
+
 	# Get price lists
 	buying_price_lists = get_buying_price_lists(filters)
 	selling_price_lists = get_selling_price_lists(filters)
 
 	# Build a map of item prices for faster lookup
 	all_price_lists = list(set(buying_price_lists + selling_price_lists))
-	price_map = build_price_map(all_price_lists)
+
+	# Get item codes for filtering
+	item_codes = [item.name for item in items]
+
+	# Build price map
+	price_map = build_price_map(all_price_lists, item_codes)
 
 	for item in items:
 		row = {
@@ -162,26 +170,33 @@ def get_data(filters):
 	return data
 
 
-def build_price_map(price_lists):
+def build_price_map(price_lists, item_codes=None):
 	"""Build a map of item prices for quick lookup"""
 	if not price_lists:
 		return {}
 
+	# Build filters
+	filters = {"price_list": ["in", price_lists]}
+
+	# Optionally filter by items for better performance
+	if item_codes:
+		filters["item_code"] = ["in", item_codes]
+
 	# Get all item prices for these price lists
 	item_prices = frappe.get_all(
 		"Item Price",
-		filters={
-			"price_list": ["in", price_lists]
-		},
+		filters=filters,
 		fields=["item_code", "price_list", "price_list_rate", "uom"]
 	)
 
-	# Build map: {(item_code, price_list, uom): rate}
+	# Build map: {(item_code, price_list): rate}
 	price_map = {}
 	for ip in item_prices:
-		key = (ip.item_code, ip.price_list, ip.uom)
-		price_map[key] = flt(ip.price_list_rate)
-		# Also store without UOM for fallback
+		# Store with UOM
+		key_with_uom = (ip.item_code, ip.price_list, ip.uom)
+		price_map[key_with_uom] = flt(ip.price_list_rate)
+
+		# Store without UOM (for fallback)
 		key_no_uom = (ip.item_code, ip.price_list)
 		if key_no_uom not in price_map:
 			price_map[key_no_uom] = flt(ip.price_list_rate)
@@ -192,9 +207,10 @@ def build_price_map(price_lists):
 def get_item_price(price_map, item_code, price_list, uom):
 	"""Get item price from price map"""
 	# Try with UOM first
-	key = (item_code, price_list, uom)
-	if key in price_map:
-		return price_map[key]
+	if uom:
+		key = (item_code, price_list, uom)
+		if key in price_map:
+			return price_map[key]
 
 	# Try without UOM
 	key_no_uom = (item_code, price_list)
