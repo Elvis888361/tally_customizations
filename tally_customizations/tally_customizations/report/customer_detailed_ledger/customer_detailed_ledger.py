@@ -131,15 +131,15 @@ def get_data(filters):
 		"_is_opening": True
 	})
 
-	# Get all GL entries for customer
+	# Get GL entries grouped by voucher so each Payment Entry / Sales Invoice
+	# appears exactly once with its total debit and credit amounts.
 	gl_entries = frappe.db.sql("""
 		SELECT
 			posting_date,
 			voucher_type,
 			voucher_no,
-			debit,
-			credit,
-			against_voucher
+			SUM(debit) as debit,
+			SUM(credit) as credit
 		FROM `tabGL Entry`
 		WHERE
 			party_type = 'Customer'
@@ -147,7 +147,8 @@ def get_data(filters):
 			AND company = %(company)s
 			AND posting_date BETWEEN %(from_date)s AND %(to_date)s
 			AND is_cancelled = 0
-		ORDER BY posting_date, creation
+		GROUP BY voucher_type, voucher_no, posting_date
+		ORDER BY posting_date, MIN(creation)
 	""", {
 		"customer": customer,
 		"company": company,
@@ -185,9 +186,14 @@ def get_data(filters):
 			)
 
 		elif gle.voucher_type == "Payment Entry":
+			payment = frappe.db.get_value(
+				"Payment Entry", gle.voucher_no,
+				["mode_of_payment", "reference_no", "remarks"],
+				as_dict=1
+			)
 			row_type = "Payment"
-			payment_method = "Bank Transfer"
-			notes = "Payment received"
+			payment_method = (payment.mode_of_payment or "Bank Transfer") if payment else "Bank Transfer"
+			notes = (payment.reference_no or "Payment received") if payment else "Payment received"
 
 		else:
 			row_type = gle.voucher_type
